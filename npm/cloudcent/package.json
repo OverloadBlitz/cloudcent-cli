@@ -1,0 +1,21 @@
+{
+  "name": "cloudcent",
+  "version": "0.0.1-beta",
+  "description": "Cloud cost estimation CLI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CloudCentIO/cost-estimator-cli-rs"
+  },
+  "bin": {
+    "cloudcent": "bin/cloudcent.js"
+  },
+  "optionalDependencies": {
+    "@cloudcent/cli-darwin-arm64": "0.0.1-beta",
+    "@cloudcent/cli-darwin-x64": "0.0.1-beta",
+    "@cloudcent/cli-linux-arm64": "0.0.1-beta",
+    "@cloudcent/cli-linux-x64": "0.0.1-beta",
+    "@cloudcent/cli-win32-arm64": "0.0.1-beta",
+    "@cloudcent/cli-win32-x64": "0.0.1-beta"
+  }
+}

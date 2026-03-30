@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build:
@@ -19,15 +20,33 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             archive: cloudcent-linux-x86_64.tar.gz
+            npm_dir: linux-x64
+            binary: cloudcent
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             archive: cloudcent-linux-aarch64.tar.gz
+            npm_dir: linux-arm64
+            binary: cloudcent
           - target: x86_64-apple-darwin
             os: macos-latest
             archive: cloudcent-macos-x86_64.tar.gz
+            npm_dir: darwin-x64
+            binary: cloudcent
           - target: aarch64-apple-darwin
             os: macos-latest
             archive: cloudcent-macos-aarch64.tar.gz
+            npm_dir: darwin-arm64
+            binary: cloudcent
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: cloudcent-windows-x86_64.zip
+            npm_dir: win32-x64
+            binary: cloudcent.exe
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: cloudcent-windows-aarch64.zip
+            npm_dir: win32-arm64
+            binary: cloudcent.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -50,17 +69,36 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
-      - name: Package
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
           tar czf ../../../${{ matrix.archive }} cloudcent
           cd ../../..
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target/${{ matrix.target }}/release/cloudcent.exe" -DestinationPath "${{ matrix.archive }}"
+
+      - name: Prepare npm package
+        shell: bash
+        run: |
+          mkdir -p npm/${{ matrix.npm_dir }}/bin
+          cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/${{ matrix.npm_dir }}/bin/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.archive }}
           path: ${{ matrix.archive }}
+
+      - name: Upload npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-${{ matrix.npm_dir }}
+          path: npm/${{ matrix.npm_dir }}/
 
   release:
     needs: build
@@ -76,10 +114,81 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
+          path: artifacts
+
+      - name: Collect release archives
+        run: |
+          find artifacts -name "*.tar.gz" -o -name "*.zip" | head -20
+          cp artifacts/*.tar.gz artifacts/*.zip . 2>/dev/null || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
-          files: "*.tar.gz"
+          files: |
+            *.tar.gz
+            *.zip
           generate_release_notes: true
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Download all npm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: npm-*
+          path: npm-artifacts
+
+      - name: Prepare and publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+
+          for dir in npm-artifacts/npm-*/; do
+            platform=$(basename "$dir" | sed 's/^npm-//')
+            pkg_dir="npm/${platform}"
+
+            # Copy binary into the package
+            mkdir -p "${pkg_dir}/bin"
+            cp -r "${dir}"bin/* "${pkg_dir}/bin/" 2>/dev/null || true
+
+            # Make binaries executable
+            chmod +x "${pkg_dir}/bin/"* 2>/dev/null || true
+
+            # Update version in package.json
+            cd "${pkg_dir}"
+            npm version "${VERSION}" --no-git-tag-version --allow-same-version
+            npm publish --access public --provenance
+            cd ../..
+          done
+
+      - name: Publish main package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+
+          cd npm/cloudcent
+
+          # Update version in main package and optional deps
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '${VERSION}';
+            for (const dep of Object.keys(pkg.optionalDependencies || {})) {
+              pkg.optionalDependencies[dep] = '${VERSION}';
+            }
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          npm publish --access public --provenance

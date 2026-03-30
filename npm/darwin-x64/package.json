@@ -1,0 +1,10 @@
+{
+  "name": "@cloudcent/cli-darwin-x64",
+  "version": "0.0.1-beta",
+  "description": "cloudcent CLI binary for macOS x64",
+  "license": "MIT",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "bin": { "cloudcent": "bin/cloudcent" },
+  "publishConfig": { "access": "public" }
+}

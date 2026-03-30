@@ -1,0 +1,10 @@
+{
+  "name": "@cloudcent/cli-linux-arm64",
+  "version": "0.0.1-beta",
+  "description": "cloudcent CLI binary for Linux arm64",
+  "license": "MIT",
+  "os": ["linux"],
+  "cpu": ["arm64"],
+  "bin": { "cloudcent": "bin/cloudcent" },
+  "publishConfig": { "access": "public" }
+}

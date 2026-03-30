@@ -17,5 +17,7 @@ build_log.txt
 cargo_found.txt
 cargo_search.txt
 *.bat
-*.ps1
 null
+
+# npm platform binaries (populated by CI)
+npm/*/bin/
