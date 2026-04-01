@@ -1,5 +1,5 @@
 {
-  "name": "cloudcent",
+  "name": "@cloudcent/cli",
   "version": "0.0.1-beta",
   "description": "Cloud cost estimation CLI",
   "license": "MIT",
@@ -7,6 +7,9 @@
     "type": "git",
     "url": "https://github.com/CloudCentIO/cost-estimator-cli-rs"
   },
+  "files": [
+    "bin/cloudcent.js"
+  ],
   "bin": {
     "cloudcent": "bin/cloudcent.js"
   },

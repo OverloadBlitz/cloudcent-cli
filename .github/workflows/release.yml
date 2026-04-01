@@ -147,9 +147,7 @@ jobs:
           pattern: npm-*
           path: npm-artifacts
 
-      - name: Prepare and publish platform packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Prepare platform packages
         run: |
           VERSION="${{ inputs.tag }}"
           VERSION="${VERSION#v}"
@@ -157,20 +155,61 @@ jobs:
           for dir in npm-artifacts/npm-*/; do
             platform=$(basename "$dir" | sed 's/^npm-//')
             pkg_dir="npm/${platform}"
-
-            # Copy binary into the package
             mkdir -p "${pkg_dir}/bin"
             cp -r "${dir}"bin/* "${pkg_dir}/bin/" 2>/dev/null || true
-
-            # Make binaries executable
             chmod +x "${pkg_dir}/bin/"* 2>/dev/null || true
-
-            # Update version in package.json
             cd "${pkg_dir}"
             npm version "${VERSION}" --no-git-tag-version --allow-same-version
-            npm publish --access public --provenance
             cd ../..
           done
+
+      - name: Publish darwin-arm64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/darwin-arm64 && npm publish --access public
+
+      - name: Wait for registry
+        run: sleep 30
+
+      - name: Publish darwin-x64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/darwin-x64 && npm publish --access public
+
+      - name: Wait for registry
+        run: sleep 30
+
+      - name: Publish linux-arm64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/linux-arm64 && npm publish --access public
+
+      - name: Wait for registry
+        run: sleep 30
+
+      - name: Publish linux-x64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/linux-x64 && npm publish --access public
+
+      - name: Wait for registry
+        run: sleep 30
+
+      - name: Publish win32-arm64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/win32-arm64 && npm publish --access public
+
+      - name: Wait for registry
+        run: sleep 30
+
+      - name: Publish win32-x64
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/win32-x64 && npm publish --access public
+
+      - name: Wait for registry
+        run: sleep 30
 
       - name: Publish main package
         env:
@@ -191,4 +230,4 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
-          npm publish --access public --provenance
+          npm publish --access public

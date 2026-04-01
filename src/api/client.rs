@@ -3,7 +3,9 @@ use reqwest::Client as HttpClient;
 use super::models::{Config, PricingApiResponse, MetadataResponse, GenerateTokenResponse, ExchangeResponse, PricingRequest};
 
 
-pub const API_BASE_URL: &str = "https://api.cloudcent.io";
+//pub const API_BASE_URL: &str = "https://api.cloudcent.io";
+
+pub const API_BASE_URL: &str = "http://localhost:8080";
 
 pub const CLI_BASE_URL: &str = "https://cli.cloudcent.io";
 

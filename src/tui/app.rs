@@ -345,6 +345,13 @@ impl App {
                                 self.pricing_view.items = PricingView::convert_response(response.clone());
                                 self.pricing_view.filtered_items = self.pricing_view.items.clone();
                                 self.pricing_view.selected = 0;
+                                self.pricing_view.h_scroll_offset = 0;
+                                self.pricing_view.results_page = 0;
+
+                                // Auto-focus results table
+                                if !self.pricing_view.filtered_items.is_empty() {
+                                    self.pricing_view.active_section = crate::tui::views::pricing::PricingSection::Results;
+                                }
 
                                 // Save to cache and history
                                 if let Some(ref db) = self.db {
@@ -517,7 +524,13 @@ impl App {
                             self.pricing_view.items = crate::tui::views::pricing::PricingView::convert_response(cached_resp);
                             self.pricing_view.filtered_items = self.pricing_view.items.clone();
                             self.pricing_view.selected = 0;
+                            self.pricing_view.h_scroll_offset = 0;
+                            self.pricing_view.results_page = 0;
                             self.pricing_view.loading = false;
+                            // Auto-focus results table
+                            if !self.pricing_view.filtered_items.is_empty() {
+                                self.pricing_view.active_section = crate::tui::views::pricing::PricingSection::Results;
+                            }
                         } else {
                             // Fallback to API call
                             self.submit_pricing_query();
@@ -549,11 +562,11 @@ impl App {
             #[cfg(feature = "estimate")]
             ViewMode::Pricing => ViewMode::Estimate,
             #[cfg(not(feature = "estimate"))]
-            ViewMode::Pricing => ViewMode::Settings,
+            ViewMode::Pricing => ViewMode::History,
             #[cfg(feature = "estimate")]
-            ViewMode::Estimate => ViewMode::Settings,
-            ViewMode::Settings => ViewMode::History,
-            ViewMode::History => ViewMode::Pricing,
+            ViewMode::Estimate => ViewMode::History,
+            ViewMode::History => ViewMode::Settings,
+            ViewMode::Settings => ViewMode::Pricing,
             _ => ViewMode::Pricing,
         };
         self.set_header_focus();
@@ -564,14 +577,14 @@ impl App {
 
     fn switch_view_prev(&mut self) {
         self.view_mode = match self.view_mode {
-            ViewMode::Pricing => ViewMode::History,
+            ViewMode::Pricing => ViewMode::Settings,
             #[cfg(feature = "estimate")]
             ViewMode::Estimate => ViewMode::Pricing,
             #[cfg(feature = "estimate")]
-            ViewMode::Settings => ViewMode::Estimate,
+            ViewMode::History => ViewMode::Estimate,
             #[cfg(not(feature = "estimate"))]
-            ViewMode::Settings => ViewMode::Pricing,
-            ViewMode::History => ViewMode::Settings,
+            ViewMode::History => ViewMode::Pricing,
+            ViewMode::Settings => ViewMode::History,
             _ => ViewMode::Pricing,
         };
         self.set_header_focus();

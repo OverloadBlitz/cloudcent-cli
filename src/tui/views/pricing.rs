@@ -25,6 +25,13 @@ pub struct PricingDisplayItem {
 }
 
 #[derive(Debug, Clone)]
+pub struct RateInfo {
+    pub price: String,
+    pub start_range: String,
+    pub end_range: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct PriceInfo {
     pub pricing_model: String,
     pub price: String,
@@ -32,6 +39,8 @@ pub struct PriceInfo {
     pub upfront_fee: String,
     pub purchase_option: String,
     pub year: String,
+    /// All rate tiers (empty if single flat price)
+    pub rates: Vec<RateInfo>,
 }
 
 // ── Command modes ────────────────────────────────────────────────────────────
@@ -141,6 +150,10 @@ pub struct PricingView {
     pub suggestion_index: Option<usize>,
     /// Horizontal scroll offset for the results table (number of scrollable columns to skip).
     pub h_scroll_offset: usize,
+    /// Total number of scrollable columns (updated on render).
+    pub total_scrollable_cols: std::cell::Cell<usize>,
+    /// Number of visible scrollable columns that fit in the table width (updated on render).
+    pub visible_scrollable_cols: std::cell::Cell<usize>,
     /// Number of columns in the suggestion panel (updated on render, used for keyboard nav)
     pub suggestion_cols: std::cell::Cell<usize>,
 }
@@ -165,6 +178,8 @@ impl PricingView {
             suggestions_cache: Vec::new(),
             suggestion_index: None,
             h_scroll_offset: 0,
+            total_scrollable_cols: std::cell::Cell::new(0),
+            visible_scrollable_cols: std::cell::Cell::new(0),
             suggestion_cols: std::cell::Cell::new(1),
         }
     }
@@ -564,7 +579,15 @@ impl PricingView {
                 }
             }
             KeyCode::Right => {
-                self.h_scroll_offset += 1;
+                // Only scroll right if not all columns are already visible
+                let total = self.total_scrollable_cols.get();
+                let visible = self.visible_scrollable_cols.get();
+                if total > visible {
+                    let max_offset = total.saturating_sub(visible);
+                    if self.h_scroll_offset < max_offset {
+                        self.h_scroll_offset += 1;
+                    }
+                }
             }
             KeyCode::Esc => return Ok(PricingEvent::Quit),
             _ => {}
@@ -891,9 +914,9 @@ impl PricingView {
             nav_spans.push(Span::styled("Estimate", Style::default().fg(Color::DarkGray)));
         }
         nav_spans.push(Span::styled(" | ", Style::default().fg(Color::DarkGray)));
-        nav_spans.push(Span::styled("Settings", Style::default().fg(Color::DarkGray)));
-        nav_spans.push(Span::styled(" | ", Style::default().fg(Color::DarkGray)));
         nav_spans.push(Span::styled("History", Style::default().fg(Color::DarkGray)));
+        nav_spans.push(Span::styled(" | ", Style::default().fg(Color::DarkGray)));
+        nav_spans.push(Span::styled("Settings", Style::default().fg(Color::DarkGray)));
 
         let text = vec![Line::from(nav_spans)];
 
@@ -1358,24 +1381,64 @@ impl PricingView {
         scrollable_headers.push("Min Price".to_string());
         scrollable_headers.push("Max Price".to_string());
 
-        // Clamp h_scroll_offset
-        let max_offset = scrollable_headers.len().saturating_sub(1);
-        let h_offset = self.h_scroll_offset.min(max_offset);
+        // Compute content-based widths for scrollable columns
+        let scrollable_col_widths: Vec<u16> = (0..scrollable_headers.len()).map(|i| {
+            if i < attr_keys_sorted.len() {
+                let header_w = attr_keys_sorted[i].len() as u16;
+                let content_w = self.filtered_items.iter()
+                    .map(|item| {
+                        item.attributes.get(&attr_keys_sorted[i])
+                            .and_then(|v| v.as_ref())
+                            .map(|v| v.len())
+                            .unwrap_or(1) as u16
+                    })
+                    .max().unwrap_or(1);
+                header_w.max(content_w).max(8) + 2
+            } else {
+                // Min Price / Max Price
+                14
+            }
+        }).collect();
 
-        // Determine which scrollable columns fit in the remaining width
+        // Store total scrollable column count for key handler
+        self.total_scrollable_cols.set(scrollable_headers.len());
+
+        // Determine which scrollable columns fit in the remaining width (from offset 0 first)
         let frozen_width: u16 = 5 + product_col_w + region_col_w;
         let available_width = area.width.saturating_sub(frozen_width + 2 + 1); // 2 for borders, 1 for separator
-        
+
+        // Check how many columns fit from offset 0 to decide if scrolling is needed
+        let mut all_fit_count = 0;
+        let mut all_fit_width: u16 = 0;
+        for i in 0..scrollable_headers.len() {
+            let col_w = scrollable_col_widths[i];
+            if all_fit_width + col_w > available_width && all_fit_count > 0 {
+                break;
+            }
+            all_fit_width += col_w;
+            all_fit_count += 1;
+        }
+        let all_columns_fit = all_fit_count >= scrollable_headers.len();
+
+        // Clamp h_scroll_offset locally for rendering (key handler caps the actual value)
+        let h_offset = if all_columns_fit {
+            0
+        } else {
+            let max_offset = scrollable_headers.len().saturating_sub(1);
+            self.h_scroll_offset.min(max_offset)
+        };
+
         let mut visible_scrollable_count = 0;
         let mut used_width: u16 = 0;
         for i in h_offset..scrollable_headers.len() {
-            let col_w: u16 = if i < attr_keys_sorted.len() { 15 } else { 14 }; // attrs=15, prices=14
+            let col_w = scrollable_col_widths[i];
             if used_width + col_w > available_width && visible_scrollable_count > 0 {
                 break;
             }
             used_width += col_w;
             visible_scrollable_count += 1;
         }
+        self.visible_scrollable_cols.set(visible_scrollable_count);
 
         // Build final header row
         let mut header_cells = frozen_header_cells;
@@ -1446,19 +1509,23 @@ impl PricingView {
             .collect();
 
         // Build constraints: frozen columns + visible scrollable columns
-        let mut constraints: Vec<Constraint> = vec![
-            Constraint::Length(5),              // No.
-            Constraint::Min(product_col_w),     // Product (never truncate)
-            Constraint::Min(region_col_w),      // Region (never truncate)
-        ];
-        
-        for i in h_offset..(h_offset + visible_scrollable_count).min(scrollable_headers.len()) {
-            if i < attr_keys_sorted.len() {
-                constraints.push(Constraint::Length(15));
-            } else {
-                constraints.push(Constraint::Length(14));
+        // Distribute remaining space evenly across all columns
+        let total_col_count = 3 + visible_scrollable_count; // No + Product + Region + scrollable
+        let base_widths: Vec<u16> = {
+            let mut w = vec![5u16, product_col_w, region_col_w];
+            for i in h_offset..(h_offset + visible_scrollable_count).min(scrollable_headers.len()) {
+                w.push(scrollable_col_widths[i]);
             }
-        }
+            w
+        };
+        let total_base: u16 = base_widths.iter().sum();
+        let table_inner_width = area.width.saturating_sub(2); // borders
+        let extra = table_inner_width.saturating_sub(total_base);
+        let per_col_extra = if total_col_count > 0 { extra / total_col_count as u16 } else { 0 };
+
+        let constraints: Vec<Constraint> = base_widths.iter().map(|&w| {
+            Constraint::Length(w + per_col_extra)
+        }).collect();
 
         f.render_widget(
             Table::new(rows, constraints)
@@ -1467,20 +1534,25 @@ impl PricingView {
                     Block::default()
                         .borders(Borders::ALL)
                         .border_type(border_type)
-                        .title(Line::from(vec![
-                            Span::styled(if is_focused { " > " } else { "   " }, title_style),
-                            Span::styled(
-                                format!(" Results ({} total, page {}/{}) ", 
-                                    self.filtered_items.len(), 
-                                    self.results_page + 1, 
-                                    total_pages.max(1)),
-                                title_style,
-                            ),
-                            Span::styled(
-                                format!(" ←→ col {}/{} ", h_offset + 1, scrollable_headers.len()),
-                                Style::default().fg(Color::Cyan),
-                            ),
-                        ]))
+                        .title(Line::from({
+                            let mut spans = vec![
+                                Span::styled(if is_focused { " > " } else { "   " }, title_style),
+                                Span::styled(
+                                    format!(" Results ({} total, page {}/{}) ", 
+                                        self.filtered_items.len(), 
+                                        self.results_page + 1, 
+                                        total_pages.max(1)),
+                                    title_style,
+                                ),
+                            ];
+                            if !all_columns_fit {
+                                spans.push(Span::styled(
+                                    format!(" ←→ col {}/{} ", h_offset + 1, scrollable_headers.len()),
+                                    Style::default().fg(Color::Cyan),
+                                ));
+                            }
+                            spans
+                        }))
                         .border_style(Style::default().fg(border_color)),
                 ),
             area,
@@ -1524,7 +1596,97 @@ impl PricingView {
             return;
         }
 
-        // Split into left and right columns
+        // Check if any price has tiered rates (more than 1 rate)
+        let has_tiers = item.prices.iter().any(|p| p.rates.len() > 1);
+
+        if has_tiers {
+            self.render_price_details_tiered(f, area, item);
+        } else {
+            self.render_price_details_flat(f, area, item);
+        }
+    }
+
+    fn render_price_details_tiered(&self, f: &mut Frame, area: Rect, item: &PricingDisplayItem) {
+        let title = Line::from(vec![
+            Span::styled(" > Price Details - ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{} / {} ({} models, tiered)", item.region, item.product, item.prices.len()),
+                Style::default().fg(Color::White),
+            ),
+            Span::styled(" ", Style::default()),
+        ]);
+
+        // Build rows: for each price, show a header row then rate tiers
+        let mut rows: Vec<Row> = Vec::new();
+        for p in &item.prices {
+            // Price summary row
+            let model_label = format!(
+                "{}{}{}",
+                p.pricing_model,
+                if !p.purchase_option.is_empty() { format!(" ({})", p.purchase_option) } else { String::new() },
+                if !p.year.is_empty() && p.year != "-" { format!(" {}yr", p.year) } else { String::new() },
+            );
+            rows.push(Row::new(vec![
+                Cell::from(model_label).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Cell::from(""),
+                Cell::from(""),
+                Cell::from(p.unit.clone()).style(Style::default().fg(Color::DarkGray)),
+                Cell::from(if p.upfront_fee.is_empty() || p.upfront_fee == "0" { String::new() } else { format!("upfront: {}", p.upfront_fee) })
+                    .style(Style::default().fg(Color::DarkGray)),
+            ]));
+
+            if p.rates.len() <= 1 {
+                // Single rate, show inline
+                let price_str = p.rates.first().map(|r| r.price.clone()).unwrap_or(p.price.clone());
+                rows.push(Row::new(vec![
+                    Cell::from("  flat"),
+                    Cell::from(price_str).style(Style::default().fg(Color::Green)),
+                    Cell::from(""),
+                    Cell::from(""),
+                    Cell::from(""),
+                ]));
+            } else {
+                // Multiple tiers
+                for r in &p.rates {
+                    let range = if r.start_range.is_empty() && r.end_range.is_empty() {
+                        String::new()
+                    } else {
+                        let start = if r.start_range.is_empty() { "0".to_string() } else { r.start_range.clone() };
+                        let end = if r.end_range.is_empty() || r.end_range == "Inf" { "∞".to_string() } else { r.end_range.clone() };
+                        format!("{} - {}", start, end)
+                    };
+                    rows.push(Row::new(vec![
+                        Cell::from(format!("  {}", range)).style(Style::default().fg(Color::DarkGray)),
+                        Cell::from(r.price.clone()).style(Style::default().fg(Color::Green)),
+                        Cell::from(""),
+                        Cell::from(""),
+                        Cell::from(""),
+                    ]));
+                }
+            }
+        }
+
+        let constraints = vec![
+            Constraint::Min(20),   // Model / Range
+            Constraint::Min(12),   // Price
+            Constraint::Length(0), // spacer
+            Constraint::Min(10),   // Unit
+            Constraint::Min(14),   // Upfront
+        ];
+
+        f.render_widget(
+            Table::new(rows, constraints)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(title)
+                        .border_style(Style::default().fg(Color::Cyan)),
+                ),
+            area,
+        );
+    }
+
+    fn render_price_details_flat(&self, f: &mut Frame, area: Rect, item: &PricingDisplayItem) {
         let cols = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![
@@ -2031,6 +2193,16 @@ impl PricingView {
                         "N/A".to_string()
                     };
 
+                    let rate_infos: Vec<RateInfo> = if let Some(rates) = &p.rates {
+                        rates.iter().map(|r| RateInfo {
+                            price: Self::stringify_json(&r.price).unwrap_or_else(|| "N/A".to_string()),
+                            start_range: Self::stringify_json(&r.start_range).unwrap_or_default(),
+                            end_range: Self::stringify_json(&r.end_range).unwrap_or_default(),
+                        }).collect()
+                    } else {
+                        Vec::new()
+                    };
+
                     PriceInfo {
                         pricing_model: p.pricing_model.clone().unwrap_or_else(|| "OnDemand".to_string()),
                         price: display_price,
@@ -2038,6 +2210,7 @@ impl PricingView {
                         upfront_fee: Self::stringify_json(&p.upfront_fee).unwrap_or_default(),
                         purchase_option: p.purchase_option.clone().unwrap_or_default(),
                         year: Self::stringify_json(&p.year).unwrap_or_default(),
+                        rates: rate_infos,
                     }
                 }).collect();
 

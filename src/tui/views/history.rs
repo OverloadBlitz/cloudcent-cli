@@ -139,12 +139,12 @@ impl HistoryView {
             nav_spans.push(Span::styled("Estimate", estimate_style));
         }
         nav_spans.push(Span::raw(" | "));
-        nav_spans.push(Span::styled("Settings", settings_style));
-        nav_spans.push(Span::raw(" | "));
         nav_spans.push(Span::styled(
             if header_section_active { " > History < " } else { " History " },
             history_style,
         ));
+        nav_spans.push(Span::raw(" | "));
+        nav_spans.push(Span::styled("Settings", settings_style));
         let header_text = vec![Line::from(nav_spans)];
 
         let header_title = if header_section_active {

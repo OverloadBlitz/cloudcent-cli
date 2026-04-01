@@ -106,12 +106,12 @@ impl SettingsView {
             nav_spans.push(Span::styled("Estimate", estimate_style));
         }
         nav_spans.push(Span::raw(" | "));
+        nav_spans.push(Span::styled("History", Style::default().fg(Color::DarkGray)));
+        nav_spans.push(Span::raw(" | "));
         nav_spans.push(Span::styled(
             if header_section_active { " > Settings < " } else { " Settings " },
             settings_style,
         ));
-        nav_spans.push(Span::raw(" | "));
-        nav_spans.push(Span::styled("History", Style::default().fg(Color::DarkGray)));
         let header_text = vec![Line::from(nav_spans)];
 
         let header_title = if header_section_active {
