@@ -5,6 +5,8 @@ A terminal UI for querying and comparing cloud pricing across providers, built w
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Version](https://img.shields.io/badge/version-0.0.1--beta-orange)
 
+> ⚠️ Beta: each query returns up to 150 results, sorted by min price ascending.
+
 ## Two Ways to Query
 
 CloudCent works in both directions — start from what you know, find what you need:
@@ -70,9 +72,7 @@ On first launch you'll be prompted to authenticate via browser. This sets up a f
 | GCP | Compute Engine, Cloud Storage, Cloud SQL, GKE, Memorystore, Vertex AI, Big Data, Data Transfer |
 | Azure | Virtual Machines, AKS, Container, Storage, SQL Database, Redis, Backup, Machine Learning, OpenAI, ExpressRoute, Bandwidth, Big Data |
 | OCI | Compute, Object Storage, Database Instance, Cache, Backup, FastConnect, Data Transfer, Generative AI |
-| AI APIs | Anthropic, Deepseek, Minimax, Openrouter, Z.ai |
-
-Pricing models vary by provider — OnDemand, Reserved/Committed, Spot/Preemptible, and token-based (for AI APIs).
+Pricing models vary by provider — OnDemand, Reserved/Committed, Spot/Preemptible, and token-based (for AI APIs).mptible, and token-based (for AI APIs).
 
 > Beta limitation: each query returns up to 150 results, sorted by min price ascending.
 
