@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CloudCentIO/cost-estimator-cli-rs"
+    "url": "https://github.com/OverloadBlitz/cloudcent-cli"
   },
   "files": [
     "bin/cloudcent.js"
