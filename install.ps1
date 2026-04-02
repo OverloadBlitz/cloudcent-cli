@@ -7,10 +7,17 @@ $Binary = "cloudcent"
 $InstallDir = "$env:USERPROFILE\.cloudcent\bin"
 
 function Detect-Arch {
-    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    # Try .NET Core API first (PowerShell 7+), fall back to environment variable
+    try {
+        $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+    } catch {
+        $arch = $env:PROCESSOR_ARCHITECTURE
+    }
     switch ($arch) {
-        "X64"   { return "x86_64" }
-        "Arm64" { return "aarch64" }
+        "X64"    { return "x86_64" }
+        "AMD64"  { return "x86_64" }
+        "Arm64"  { return "aarch64" }
+        "ARM64"  { return "aarch64" }
         default {
             Write-Error "Unsupported architecture: $arch"
             exit 1
