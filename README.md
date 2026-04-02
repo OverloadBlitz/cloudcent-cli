@@ -64,6 +64,14 @@ cloudcent
 
 On first launch you'll be prompted to authenticate via browser. This sets up a free API key stored at `~/.cloudcent/config.yaml`.
 
+**Home**
+
+![Home](docs/home.png)
+
+**Pricing example**
+
+![Pricing example](docs/example.png)
+
 ## Supported Providers & Pricing Models
 
 | Provider | Services |
