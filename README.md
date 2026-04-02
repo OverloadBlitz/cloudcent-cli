@@ -74,6 +74,8 @@ On first launch you'll be prompted to authenticate via browser. This sets up a f
 
 Pricing models vary by provider — OnDemand, Reserved/Committed, Spot/Preemptible, and token-based (for AI APIs).
 
+> Beta limitation: each query returns up to 150 results, sorted by min price ascending.
+
 > Available products and pricing models are fetched dynamically from the API and may expand over time.
 
 ## Project Structure
