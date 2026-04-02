@@ -221,7 +221,7 @@ impl CloudCentClient {
         std::fs::create_dir_all(&config_dir).context("Failed to create config directory")?;
         
         let file_path = config_dir.join("metadata.json.gz");
-        std::fs::write(&file_path, content).context(format!("Failed to write metadata file to {:?}", file_path))?;
+        std::fs::write(&file_path, &content).context(format!("Failed to write metadata file to {:?}", file_path))?;
         
         Ok(())
     }
