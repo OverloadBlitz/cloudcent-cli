@@ -4,7 +4,7 @@
   <img src="docs/banner.svg" alt="Animated 4-Column Banner" width="100%">
 </p>
 
-A terminal UI for querying and comparing cloud pricing across providers, built with Rust and [Ratatui](https://ratatui.rs).
+A Terminal UI for querying and comparing cloud pricing across providers, built with Rust and [Ratatui](https://ratatui.rs). Currently indexing 3M+ de-duplicated SKUs
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Version](https://img.shields.io/badge/version-0.0.2--beta-orange)
@@ -56,13 +56,13 @@ On first launch you'll be prompted to authenticate via browser. This sets up a f
 
 ## Supported Providers & Pricing Models
 
-| Provider                                     | Services                                                                                                                            | Pricing Model                                                      |
-|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| AWS                                          | EC2, ECS, EKS, S3, RDS, ElastiCache, EMR, SageMaker, Bedrock, Direct Connect, Data Transfer, Backup                                 | OnDemand, Reserved, SavingPlan, Spot                               |
-| Azure                                        | Virtual Machines, AKS, Container, Storage, SQL Database, Redis, Backup, Machine Learning, OpenAI, ExpressRoute, Bandwidth, Big Data | OnDemand, Reserved, SavingPlan (with/without Azure Hybrid Benefit) |
-| GCP                                          | Compute Engine, Cloud Storage, Cloud SQL, GKE, Memorystore, Vertex AI, Big Data, Data Transfer                                      | OnDemand, CommitedUseDiscount, Preemptible                         |
-| OCI                                          | Compute, Object Storage, Database Instance, Cache, Backup, FastConnect, Data Transfer, Generative AI                                | OnDemand (PAYG)                                                    |
-| OpenAI, Anthropic, Deepseek, Z.ai, Minimax, Openrouter | LLM API                                                                                                                             | OnDemand                                                           |
+| Provider                                     | Services                                                                                                                            | Pricing Model                                                      | Data Source              |
+|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|--------------------------|
+| AWS                                          | EC2, ECS, EKS, S3, RDS, ElastiCache, EMR, SageMaker, Bedrock, Direct Connect, Data Transfer, Backup                                 | OnDemand, Reserved, SavingPlan, Spot                               | AWS Pricing API          |
+| Azure                                        | Virtual Machines, AKS, Container, Storage, SQL Database, Redis, Backup, Machine Learning, OpenAI, ExpressRoute, Bandwidth, Big Data | OnDemand, Reserved, SavingPlan (with/without Azure Hybrid Benefit) | Azure Pricing Calculator |
+| GCP                                          | Compute Engine, Cloud Storage, Cloud SQL, GKE, Memorystore, Vertex AI, Big Data, Data Transfer                                      | OnDemand, CommitedUseDiscount, Preemptible                         | GCP Pricing SDK v1       |         
+| OCI                                          | Compute, Object Storage, Database Instance, Cache, Backup, FastConnect, Data Transfer, Generative AI                                | OnDemand (PAYG)                                                    | OCI Cost Estimator       |         
+| OpenAI, Anthropic, Deepseek, Z.ai, Minimax, Openrouter | LLM API                                                                                                                             | OnDemand                                                           | Pricing Page             |             
 
 > ⚠️ Beta limitation:
 > * **Result Limit**: Queries return a maximum of 150 results, sorted by minimum price (ascending)
