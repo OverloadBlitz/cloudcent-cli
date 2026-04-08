@@ -1,6 +1,6 @@
-<svg width="100%" viewBox="0 0 1600 60" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" viewBox="0 0 1900 60" xmlns="http://www.w3.org/2000/svg">
   <style>
-    text { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 17px; }
+    text { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 21px; }
     .kw  { fill: #58a6ff; font-weight: bold; }
     .tag { fill: #3fb950; font-weight: bold; }
     .sep { fill: #30363d; }
@@ -19,11 +19,11 @@
     }
   </style>
   <defs>
-    <clipPath id="clip"><rect x="0" y="10" width="1600" height="40"/></clipPath>
+    <clipPath id="clip"><rect x="0" y="10" width="1900" height="40"/></clipPath>
   </defs>
 
-  <rect width="1600" height="60" rx="6" fill="#0d1117"/>
-  <rect width="1600" height="60" rx="6" fill="none" stroke="#30363d" stroke-width="1"/>
+  <rect width="1900" height="60" rx="6" fill="#0d1117"/>
+  <rect width="1900" height="60" rx="6" fill="none" stroke="#30363d" stroke-width="1"/>
 
   <g clip-path="url(#clip)">
     <g class="ticker">

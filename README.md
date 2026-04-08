@@ -7,7 +7,7 @@
 A terminal UI for querying and comparing cloud pricing across providers, built with Rust and [Ratatui](https://ratatui.rs).
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
-![Version](https://img.shields.io/badge/version-0.0.1--beta-orange)
+![Version](https://img.shields.io/badge/version-0.0.2--beta-orange)
 
 ## Installation
 
