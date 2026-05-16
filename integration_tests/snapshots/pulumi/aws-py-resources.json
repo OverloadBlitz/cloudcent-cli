@@ -1,0 +1,165 @@
+{
+  "resources": [
+    {
+      "name": "myloggroup",
+      "props": { "type": "aws:cloudwatch/logGroup:LogGroup" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "mysecuritygroup",
+      "props": { "type": "aws:ec2/securityGroup:SecurityGroup" },
+      "status": "free resource"
+    },
+    {
+      "name": "myvpc",
+      "props": { "type": "aws:ec2/vpc:Vpc" },
+      "status": "free resource"
+    },
+    {
+      "name": "myrepository",
+      "props": { "type": "aws:ecr/repository:Repository" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "mycluster",
+      "props": { "type": "aws:ecs/cluster:Cluster" },
+      "status": "free resource"
+    },
+    {
+      "name": "myrole",
+      "props": { "type": "aws:iam/role:Role" },
+      "status": "free resource"
+    },
+    {
+      "name": "mypolicy",
+      "props": { "type": "aws:iam/policy:Policy" },
+      "status": "free resource"
+    },
+    {
+      "name": "myuser",
+      "props": { "type": "aws:iam/user:User" },
+      "status": "free resource"
+    },
+    {
+      "name": "mygroup",
+      "props": { "type": "aws:iam/group:Group" },
+      "status": "free resource"
+    },
+    {
+      "name": "mystream",
+      "props": { "type": "aws:kinesis/stream:Stream" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "myqueue",
+      "props": { "type": "aws:sqs/queue:Queue" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "mylogmetricfilter",
+      "props": { "type": "aws:cloudwatch/logMetricFilter:LogMetricFilter" },
+      "status": "free resource"
+    },
+    {
+      "name": "myeventtarget",
+      "props": { "type": "aws:cloudwatch/eventTarget:EventTarget" },
+      "status": "free resource"
+    },
+    {
+      "name": "mylogstream",
+      "props": { "type": "aws:cloudwatch/logStream:LogStream" },
+      "status": "free resource"
+    },
+    {
+      "name": "myrepositorypolicy",
+      "props": { "type": "aws:ecr/repositoryPolicy:RepositoryPolicy" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "mylifecyclepolicy",
+      "props": { "type": "aws:ecr/lifecyclePolicy:LifecyclePolicy" },
+      "status": "free resource"
+    },
+    {
+      "name": "myinternetgateway",
+      "props": { "type": "aws:ec2/internetGateway:InternetGateway" },
+      "status": "free resource"
+    },
+    {
+      "name": "myrolepolicyattachment",
+      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
+      "status": "free resource"
+    },
+    {
+      "name": "myrolepolicy",
+      "props": { "type": "aws:iam/rolePolicy:RolePolicy" },
+      "status": "free resource"
+    },
+    {
+      "name": "myroutetable",
+      "props": { "type": "aws:ec2/routeTable:RouteTable" },
+      "status": "free resource"
+    },
+    {
+      "name": "myloginstopic",
+      "sub_label": "Requests",
+      "props": { "type": "aws:sns/topic:Topic" },
+      "is_usage_based": true,
+      "usage_monthly": "0"
+    },
+    {
+      "name": "myeventrule",
+      "props": { "type": "aws:cloudwatch/eventRule:EventRule" },
+      "is_usage_based": true,
+      "usage_monthly": "0"
+    },
+    {
+      "name": "mymetricalarm",
+      "props": { "type": "aws:cloudwatch/metricAlarm:MetricAlarm" },
+      "is_usage_based": true,
+      "usage_monthly": "0.1"
+    },
+    {
+      "name": "myeip",
+      "props": { "type": "aws:ec2/eip:Eip" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "mytable",
+      "sub_label": "Read Capacity",
+      "props": { "type": "aws:dynamodb/table:Table" },
+      "is_usage_based": true,
+      "usage_monthly": "127.582"
+    },
+    {
+      "name": "mytable",
+      "sub_label": "Write Capacity",
+      "props": { "type": "aws:dynamodb/table:Table" },
+      "is_usage_based": true,
+      "usage_monthly": "637.91"
+    },
+    {
+      "name": "mytable",
+      "sub_label": "Storage",
+      "props": { "type": "aws:dynamodb/table:Table" },
+      "is_usage_based": true,
+      "usage_monthly": "0"
+    },
+    {
+      "name": "mytopic",
+      "sub_label": "Requests",
+      "props": { "type": "aws:sns/topic:Topic" },
+      "is_usage_based": true,
+      "usage_monthly": "0"
+    },
+    {
+      "name": "mytopicsubscription",
+      "sub_label": "Delivery",
+      "props": { "type": "aws:sns/topicSubscription:TopicSubscription" },
+      "status": "free resource"
+    }
+  ],
+  "totals": {
+    "monthly_total": "765.59"
+  }
+}

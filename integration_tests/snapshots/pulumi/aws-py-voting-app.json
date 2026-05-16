@@ -1,0 +1,141 @@
+{
+  "resources": [
+    {
+      "name": "app-cluster",
+      "props": { "type": "aws:ecs/cluster:Cluster" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-exec-role",
+      "props": { "type": "aws:iam/role:Role" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-vpc",
+      "props": { "type": "aws:ec2/vpc:Vpc" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-task-role",
+      "props": { "type": "aws:iam/role:Role" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-ecr-repo",
+      "props": { "type": "aws:ecr/repository:Repository" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "app-vpc-subnet",
+      "props": { "type": "aws:ec2/subnet:Subnet" },
+      "status": "free resource"
+    },
+    {
+      "name": "security-group",
+      "props": { "type": "aws:ec2/securityGroup:SecurityGroup" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-gateway",
+      "props": { "type": "aws:ec2/internetGateway:InternetGateway" },
+      "status": "free resource"
+    },
+    {
+      "name": "redis-targetgroup",
+      "props": { "type": "aws:lb/targetGroup:TargetGroup" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "flask-targetgroup",
+      "props": { "type": "aws:lb/targetGroup:TargetGroup" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "redis-task-definition",
+      "props": { "type": "aws:ecs/taskDefinition:TaskDefinition" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-exec-policy",
+      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-access-policy",
+      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
+      "status": "free resource"
+    },
+    {
+      "name": "app-lifecycle-policy",
+      "props": { "type": "aws:ecr/lifecyclePolicy:LifecyclePolicy" },
+      "status": "free resource"
+    },
+    {
+      "name": "flask-dockerimage",
+      "props": { "type": "docker-build:index:Image" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "redis-balancer",
+      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "flask-balancer",
+      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "app-routetable",
+      "props": { "type": "aws:ec2/routeTable:RouteTable" },
+      "status": "free resource"
+    },
+    {
+      "name": "redis-listener",
+      "props": { "type": "aws:lb/listener:Listener" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "app_routetable_association",
+      "props": { "type": "aws:ec2/mainRouteTableAssociation:MainRouteTableAssociation" },
+      "status": "free resource"
+    },
+    {
+      "name": "flask-listener",
+      "props": { "type": "aws:lb/listener:Listener" },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "flask-task-definition",
+      "props": { "type": "aws:ecs/taskDefinition:TaskDefinition" },
+      "status": "free resource"
+    },
+    {
+      "name": "redis-service",
+      "sub_label": "CPU",
+      "props": { "type": "aws:ecs/service:Service" },
+      "on_demand_rate": "0.03238"
+    },
+    {
+      "name": "redis-service",
+      "sub_label": "Memory",
+      "props": { "type": "aws:ecs/service:Service" },
+      "on_demand_rate": "0.00356"
+    },
+    {
+      "name": "flask-service",
+      "sub_label": "CPU",
+      "props": { "type": "aws:ecs/service:Service" },
+      "on_demand_rate": "0.03238"
+    },
+    {
+      "name": "flask-service",
+      "sub_label": "Memory",
+      "props": { "type": "aws:ecs/service:Service" },
+      "on_demand_rate": "0.00356"
+    }
+  ],
+  "totals": {
+    "monthly_total": "52.47"
+  }
+}

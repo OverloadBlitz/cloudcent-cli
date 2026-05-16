@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 
@@ -16,21 +17,21 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// ResourceCollector is a gRPC ResourceMonitor server that intercepts all
-// resource registrations without connecting to AWS or any cloud provider.
+// ResourceCollector is a gRPC ResourceMonitor server that intercepts all resources
+// that's why not cloud creds are needed
 type ResourceCollector struct {
 	pulumirpc.UnimplementedResourceMonitorServer
 
 	mu              sync.Mutex
 	Resources       []internalmodel.ResourceRecord
-	StackOutputs    map[string]string // captured from pulumi.export(...)
+	StackOutputs    map[string]string
 	amiOSMap        map[string]string
 	providerRegions map[string]string
-	stackConfig     map[string]string           // Pulumi stack config values (e.g. "aws:region")
-	stackURN        string                      // URN of the pulumi:pulumi:Stack resource
-	resourceState   map[string]*structpb.Struct // URN → enriched outputs (for getResource)
+	stackConfig     map[string]string
+	stackURN        string
+	resourceState   map[string]*structpb.Struct
 
-	done chan struct{} // closed when SignalAndWaitForShutdown is called
+	done chan struct{}
 }
 
 func NewResourceCollector() *ResourceCollector {
@@ -341,7 +342,7 @@ func (c *ResourceCollector) RegisterResourceOutputs(_ context.Context, req *pulu
 // program can continue without hitting any cloud provider.
 func (c *ResourceCollector) Invoke(_ context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	tok := req.GetTok()
-	fmt.Printf("[mock] Invoke token=%s\n", tok)
+	fmt.Fprintf(os.Stderr, "[mock] Invoke token=%s\n", tok)
 	switch tok {
 	case "pulumi:pulumi:getResource":
 		return c.invokeGetResource(req)
@@ -839,7 +840,7 @@ func enrichOutputs(original *structpb.Struct, resourceType, name, urn, id string
 func mustNewStruct(fields map[string]any) *structpb.Struct {
 	s, err := structpb.NewStruct(fields)
 	if err != nil {
-		fmt.Printf("[mock] ERROR: structpb.NewStruct failed: %v (fields: %v)\n", err, fields)
+		fmt.Fprintf(os.Stderr, "[mock] ERROR: structpb.NewStruct failed: %v (fields: %v)\n", err, fields)
 	}
 	return s
 }
@@ -888,7 +889,7 @@ func (c *ResourceCollector) lookupProviderRegionLocked(provider string, provider
 
 // Call handles method calls on resources — return empty.
 func (c *ResourceCollector) Call(_ context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
-	fmt.Printf("[mock] Call token=%s\n", req.GetTok())
+	fmt.Fprintf(os.Stderr, "[mock] Call token=%s\n", req.GetTok())
 	return &pulumirpc.CallResponse{Return: req.GetArgs()}, nil
 }
 

@@ -17,6 +17,8 @@ var (
 	diagramInitForce          bool
 	diagramEstimateSpec       string
 	diagramEstimateUsageFlags []string
+	diagramEstimateModelFlags []string
+	diagramEstimateOutput     string
 )
 
 var diagramCmd = &cobra.Command{
@@ -63,6 +65,8 @@ func init() {
 
 	diagramEstimateCmd.Flags().StringVar(&diagramEstimateSpec, "spec", "", "Path to the YAML spec file (default: <diagram>.cloudcent.yaml)")
 	diagramEstimateCmd.Flags().StringArrayVar(&diagramEstimateUsageFlags, "usage", nil, "Monthly usage for a usage-based resource, e.g. --usage my-api=5000000 (can be repeated)")
+	diagramEstimateCmd.Flags().StringArrayVar(&diagramEstimateModelFlags, "model", nil, "Pricing model override, e.g. --model \"Reserved:standard:1yr\" or --model \"my-ec2=spot\" (can be repeated)")
+	diagramEstimateCmd.Flags().StringVarP(&diagramEstimateOutput, "output", "o", "table", "Output format: table or json")
 
 	diagramCmd.AddCommand(diagramParseCmd, diagramInitCmd, diagramEstimateCmd)
 }
@@ -198,16 +202,21 @@ func runDiagramEstimate(diagramPath string, d *drawio.Diagram) error {
 		}
 	}
 
-	// Parse --usage flags.
 	usageMap := parseUsageFlags(diagramEstimateUsageFlags)
 
+	modelMap := parseModelFlags(diagramEstimateModelFlags)
+
 	fmt.Printf("\n=== Resources to be priced: %d ===\n", len(decoded))
-	results, err := estimate.EstimateAllResources(client, decoded, usageMap)
+	results, err := estimate.EstimateAllResources(client, decoded, usageMap, modelMap)
 	if err != nil {
 		return fmt.Errorf("estimating resources: %w", err)
 	}
 
-	estimate.PrintResults(results)
+	if diagramEstimateOutput == "json" {
+		estimate.PrintResultsJSON(results)
+	} else {
+		estimate.PrintResults(results)
+	}
 	_ = d
 	return nil
 }

@@ -3,11 +3,17 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-0.0.3--beta-orange)
 
-A CLI that estimates cloud costs from Draw.io diagrams and Pulumi code.
+![banner](/docs/cloudcent-banner.png)
 
 ## Installation
 
-### npm (recommended)
+### Run instantly with npx
+
+```bash
+npx @cloudcent/cli
+```
+
+### Install globally with npm
 
 ```bash
 npm install -g @cloudcent/cli
@@ -25,14 +31,6 @@ curl -fsSL https://raw.githubusercontent.com/OverloadBlitz/cloudcent-cli/main/in
 irm https://raw.githubusercontent.com/OverloadBlitz/cloudcent-cli/main/install.ps1 | iex
 ```
 
-### Build from source
-
-```bash
-git clone https://github.com/OverloadBlitz/cloudcent-cli.git
-cd cloudcent-cli
-go build -o cloudcent .
-```
-
 ## Quick Start
 
 ```bash
@@ -40,9 +38,21 @@ cloudcent --help
 cloudcent init
 ```
 
-Run `cloudcent init` to authenticate via browser. This sets up a free API key stored at `~/.cloudcent/config.yaml`.
+Run `cloudcent init` to authenticate through your browser.
 
-## Demo
+This will generate a free API key and store it at:
+
+```text
+~/.cloudcent/config.yaml
+```
+
+This API key is used to access the my pricing API.
+
+No cloud or Pulumi account is required.
+
+> **Note:** For Pulumi projects, only Python is currently supported.
+
+## Example
 
 ### Draw.io
 ```
@@ -73,29 +83,47 @@ cloudcent pulumi estimate
 ```
 cloudcent                 # Show help
 cloudcent init            # Authenticate via browser
-cloudcent pricing         # Query pricing from the CLI
 cloudcent diagram init <file>      # Scaffold a YAML spec next to the diagram
 cloudcent diagram estimate <file>  # Estimate costs from the diagram's spec
+cloudcent pulumi estimate  # Estimate costs from pulumi codes
 cloudcent history         # Show past queries
 cloudcent cache stats     # Show cache statistics
 cloudcent cache clear     # Clear cache and history
 cloudcent metadata refresh  # Download latest pricing metadata
 cloudcent config          # Show current configuration
-cloudcent pulumi estimate  # Estimate costs from pulumi codes
 ```
 
 ## Configuration
 
-Config is stored at `~/.cloudcent/config.yaml` with permissions set to `600` on Unix.
+Config is stored at `~/.cloudcent/config.yaml`
 
 Data files:
 - `~/.cloudcent/metadata.json.gz` — compressed pricing metadata
 - `~/.cloudcent/cloudcent.db` — SQLite database (history, cache)
 
+
+## Integration Tests
+Currently, I am using the following repositories as integration test cases:
+
+- [jgraph/drawio-diagrams](https://github.com/jgraph/drawio-diagrams)
+- [pulumi/examples](https://github.com/pulumi/examples)
+
+These test cases are located under:
+
+```text
+/integration_tests/testdata
+```
+
+Under the `/integration_tests/snapshots` directory, I store the expected total pricing results, which were manually adjusted based on the official cloud cost estimators.
+
+The `run-tests.sh` script is for comparing the CLI output against the saved snapshots.
+
+
 ## Contributing
 
 1. Create a issue first if you want to change or fix anything
-2. Feel free to use AI but need to test and validate changes before raising prs
+2. Feel free to use AI but need to pass integration tests before raising prs
+3. Rebase against main branch and squash the commits before merging
 
 ## Reporting Issues
 

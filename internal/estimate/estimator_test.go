@@ -59,7 +59,7 @@ func TestEstimateAllResourcesMatchesPricingItemsByResourceFields(t *testing.T) {
 			},
 			PriceFilter: ">=0.2",
 		},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("EstimateAllResources returned error: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestEstimateAllResourcesMatchesPricingItemsIgnoringCase(t *testing.T) {
 				"tenancy":       "Shared",
 			},
 		},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("EstimateAllResources returned error: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestEstimateAllResourcesReusesSamePricingItemForDuplicateResources(t *testi
 				"os_app_bundle": "linux",
 			},
 		},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("EstimateAllResources returned error: %v", err)
 	}
@@ -276,6 +276,53 @@ func TestResolveUsageQty_UserSuppliedOverridesDefault(t *testing.T) {
 	}
 }
 
+func TestResolveUsageQty_SubLabelKeyOverridesBareKey(t *testing.T) {
+	// --usage my-lambda/Requests=5000000 should take priority over --usage my-lambda=1000000
+	usageMap := map[string]float64{
+		"my-lambda":          1_000_000,
+		"my-lambda/Requests": 5_000_000,
+		"my-lambda/Duration": 800_000,
+	}
+
+	reqQty, reqDefault := resolveUsageQty("my-lambda", "Lambda", "Requests", "", usageMap)
+	if reqQty != 5_000_000 {
+		t.Errorf("Requests qty = %v, want 5000000", reqQty)
+	}
+	if reqDefault {
+		t.Errorf("Requests: expected isDefault=false")
+	}
+
+	durQty, durDefault := resolveUsageQty("my-lambda", "Lambda", "Duration", "", usageMap)
+	if durQty != 800_000 {
+		t.Errorf("Duration qty = %v, want 800000", durQty)
+	}
+	if durDefault {
+		t.Errorf("Duration: expected isDefault=false")
+	}
+}
+
+func TestResolveUsageQty_BareKeyAppliesToAllSubLabels(t *testing.T) {
+	// --usage my-lambda=2000000 applies to both Requests and Duration
+	// when no name/SubLabel key is present
+	usageMap := map[string]float64{"my-lambda": 2_000_000}
+
+	reqQty, reqDefault := resolveUsageQty("my-lambda", "Lambda", "Requests", "", usageMap)
+	if reqQty != 2_000_000 {
+		t.Errorf("Requests qty = %v, want 2000000", reqQty)
+	}
+	if reqDefault {
+		t.Errorf("Requests: expected isDefault=false")
+	}
+
+	durQty, durDefault := resolveUsageQty("my-lambda", "Lambda", "Duration", "", usageMap)
+	if durQty != 2_000_000 {
+		t.Errorf("Duration qty = %v, want 2000000", durQty)
+	}
+	if durDefault {
+		t.Errorf("Duration: expected isDefault=false")
+	}
+}
+
 func TestResolveUsageQty_RawTypeOverridesServiceDefault(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -284,7 +331,7 @@ func TestResolveUsageQty_RawTypeOverridesServiceDefault(t *testing.T) {
 	}{
 		{"metric alarm = 1", "aws:cloudwatch/metricAlarm:MetricAlarm", 1},
 		{"composite alarm = 1", "aws:cloudwatch/compositeAlarm:CompositeAlarm", 1},
-		{"dashboard = 720", "aws:cloudwatch/dashboard:Dashboard", 720},
+		{"dashboard = 730", "aws:cloudwatch/dashboard:Dashboard", 730},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

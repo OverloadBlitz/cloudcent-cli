@@ -1,0 +1,54 @@
+{
+  "resources": [
+    {
+      "name": "lambdaRole",
+      "props": {
+        "type": "aws:iam/role:Role"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "lambdaRoleAttachment",
+      "props": {
+        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "lambdaPermission",
+      "props": {
+        "type": "aws:lambda/permission:Permission"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "lambdaFunction",
+      "sub_label": "Requests",
+      "props": {
+        "type": "aws:lambda/function:Function"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "0.2"
+    },
+    {
+      "name": "lambdaFunction",
+      "sub_label": "Duration",
+      "props": {
+        "type": "aws:lambda/function:Function"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "16.6667"
+    },
+    {
+      "name": "httpApiGateway",
+      "props": {
+        "type": "aws:apigatewayv2/api:Api"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "1.0"
+    }
+  ],
+  "totals": {
+    "monthly_total": "17.8667"
+  }
+}

@@ -1,0 +1,8 @@
+[submodule "integration_tests/testdata/drawio-diagrams"]
+	path = integration_tests/testdata/drawio-diagrams
+	url = https://github.com/jgraph/drawio-diagrams.git
+	shallow = true
+[submodule "integration_tests/testdata/pulumi-examples"]
+	path = integration_tests/testdata/pulumi-examples
+	url = https://github.com/pulumi/examples.git
+	shallow = true

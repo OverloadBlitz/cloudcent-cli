@@ -8,6 +8,7 @@ import (
 )
 
 // InferOSFromPattern infers "linux" or "windows" from an AMI name pattern or SSM path.
+// TODO: how to find other OS and software
 func InferOSFromPattern(pattern string) (string, bool) {
 	lower := strings.ToLower(pattern)
 	windowsKeywords := []string{"windows", "win2019", "win2022", "win2016", "win2012"}

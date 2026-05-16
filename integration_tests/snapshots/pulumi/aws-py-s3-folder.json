@@ -1,0 +1,64 @@
+{
+  "resources": [
+    {
+      "name": "public-access-block",
+      "props": { "type": "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock" },
+      "status": "free resource"
+    },
+    {
+      "name": "s3-website",
+      "props": { "type": "aws:s3/bucketWebsiteConfiguration:BucketWebsiteConfiguration" },
+      "status": "free resource"
+    },
+    {
+      "name": "bucket-policy",
+      "props": { "type": "aws:s3/bucketPolicy:BucketPolicy" },
+      "status": "free resource"
+    },
+    {
+      "name": "s3-website-bucket",
+      "sub_label": "Storage",
+      "props": { "type": "aws:s3/bucket:Bucket" },
+      "is_usage_based": true,
+      "usage_monthly": "2.3"
+    },
+    {
+      "name": "s3-website-bucket",
+      "sub_label": "Requests-PUT",
+      "props": { "type": "aws:s3/bucket:Bucket" },
+      "is_usage_based": true,
+      "usage_monthly": "0.05"
+    },
+    {
+      "name": "s3-website-bucket",
+      "sub_label": "Requests-GET",
+      "props": { "type": "aws:s3/bucket:Bucket" },
+      "is_usage_based": true,
+      "usage_monthly": "0.04"
+    },
+    {
+      "name": "index.html",
+      "sub_label": "Storage",
+      "props": { "type": "aws:s3/bucketObject:BucketObject" },
+      "is_usage_based": true,
+      "usage_monthly": "2.3"
+    },
+    {
+      "name": "favicon.png",
+      "sub_label": "Storage",
+      "props": { "type": "aws:s3/bucketObject:BucketObject" },
+      "is_usage_based": true,
+      "usage_monthly": "2.3"
+    },
+    {
+      "name": "python.png",
+      "sub_label": "Storage",
+      "props": { "type": "aws:s3/bucketObject:BucketObject" },
+      "is_usage_based": true,
+      "usage_monthly": "2.3"
+    }
+  ],
+  "totals": {
+    "monthly_total": "9.29"
+  }
+}

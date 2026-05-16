@@ -1,0 +1,99 @@
+{
+  "resources": [
+    {
+      "name": "random-datasource-name",
+      "props": {
+        "type": "random:index/randomString:RandomString"
+      },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "iam-role",
+      "props": {
+        "type": "aws:iam/role:Role"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "key",
+      "props": {
+        "type": "aws:appsync/apiKey:ApiKey"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "tenants-ds",
+      "props": {
+        "type": "aws:appsync/dataSource:DataSource"
+      },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "get-resolver",
+      "props": {
+        "type": "aws:appsync/resolver:Resolver"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "add-resolver",
+      "props": {
+        "type": "aws:appsync/resolver:Resolver"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "iam-policy",
+      "props": {
+        "type": "aws:iam/policy:Policy"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "iam-policy-attachment",
+      "props": {
+        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "tenants",
+      "sub_label": "Read Capacity",
+      "props": {
+        "type": "aws:dynamodb/table:Table"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "127.582"
+    },
+    {
+      "name": "tenants",
+      "sub_label": "Write Capacity",
+      "props": {
+        "type": "aws:dynamodb/table:Table"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "637.91"
+    },
+    {
+      "name": "tenants",
+      "sub_label": "Storage",
+      "props": {
+        "type": "aws:dynamodb/table:Table"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "0"
+    },
+    {
+      "name": "key",
+      "sub_label": "",
+      "props": {
+        "type": "aws:appsync/graphQLApi:GraphQLApi"
+      },
+      "is_usage_based": true,
+      "usage_monthly": "4.0"
+    }
+  ],
+  "totals": {
+    "monthly_total": "769.49"
+  }
+}

@@ -58,7 +58,12 @@ type EstimateResult struct {
 	InputsJSON   string          // formatted Pulumi input properties, empty for non-Pulumi estimates
 	Prices       []PriceEntry    // structured pricing options; nil if no pricing
 	OnDemandRate decimal.Decimal // convenience: the OnDemand hourly rate (zero if unknown)
-	StatusMsg    string          // non-empty when pricing lookup failed
+	// EffectiveRate is the rate used for totals — equals OnDemandRate for OnDemand,
+	// or amortized(RatePerHr + Upfront/termHours) when a non-OnDemand model is selected.
+	EffectiveRate decimal.Decimal
+	// IsAmortized is true when EffectiveRate includes an amortized upfront fee.
+	IsAmortized bool
+	StatusMsg   string // non-empty when pricing lookup failed
 	// Usage-based fields
 	IsUsageBased bool            // true when pricing is per-request/message/GB rather than per-hour
 	UsageUnit    string          // e.g. "Requests", "Messages", "GB"

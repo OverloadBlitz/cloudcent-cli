@@ -1,0 +1,243 @@
+{
+  "resources": [
+    {
+      "name": "web-secgrp",
+      "props": {
+        "type": "aws:ec2/securityGroup:SecurityGroup"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "web-server-www",
+      "on_demand_rate": "0.0116",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.0116",
+          "unit": "Hrs",
+          "upfront_fee": "0"
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0052",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.0054",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.0058",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.0078",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0078",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.0083",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "EC2InstanceSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0044",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "EC2InstanceSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.0045",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "EC2InstanceSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.005",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "EC2InstanceSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0067",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "EC2InstanceSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.0068",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "EC2InstanceSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.0072",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "standard",
+          "rate_per_hr": "0",
+          "term": "3yr",
+          "unit": "Hrs",
+          "upfront_fee": "115"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "convertible",
+          "rate_per_hr": "0",
+          "term": "3yr",
+          "unit": "Hrs",
+          "upfront_fee": "137"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "convertible",
+          "rate_per_hr": "0",
+          "term": "1yr",
+          "unit": "Hrs",
+          "upfront_fee": "68"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "standard",
+          "rate_per_hr": "0",
+          "term": "1yr",
+          "unit": "Hrs",
+          "upfront_fee": "59"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "standard",
+          "rate_per_hr": "0.002",
+          "term": "3yr",
+          "unit": "Hrs",
+          "upfront_fee": "66"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "convertible",
+          "rate_per_hr": "0.0027",
+          "term": "3yr",
+          "unit": "Hrs",
+          "upfront_fee": "70"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "standard",
+          "rate_per_hr": "0.0034",
+          "term": "1yr",
+          "unit": "Hrs",
+          "upfront_fee": "30"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "convertible",
+          "rate_per_hr": "0.0039",
+          "term": "1yr",
+          "unit": "Hrs",
+          "upfront_fee": "34"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "standard",
+          "rate_per_hr": "0.005",
+          "term": "3yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "convertible",
+          "rate_per_hr": "0.0058",
+          "term": "3yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "standard",
+          "rate_per_hr": "0.0072",
+          "term": "1yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "purchase_option": "convertible",
+          "rate_per_hr": "0.0083",
+          "term": "1yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "spot",
+          "rate_per_hr": "0.0027",
+          "unit": ""
+        }
+      ],
+      "props": {
+        "instanceType": "t2.micro",
+        "operatingSystem": "linux",
+        "servicecode": "AmazonEC2",
+        "tenancy": "Shared",
+        "type": "aws:ec2/instance:Instance"
+      }
+    }
+  ],
+  "totals": {
+    "hourly_rate": "0.0116",
+    "monthly_hourly": "8.468",
+    "monthly_total": "8.468",
+    "monthly_usage": "0"
+  }
+}

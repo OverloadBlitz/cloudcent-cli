@@ -33,6 +33,8 @@ var pulumiEstimatePriceFilter string
 var pulumiEstimateStack string
 var pulumiEstimateConfigFlags []string
 var pulumiEstimateUsageFlags []string
+var pulumiEstimateModelFlags []string
+var pulumiEstimateOutput string
 
 var pulumiEstimateCmd = &cobra.Command{
 	Use:   "estimate [path]",
@@ -50,11 +52,11 @@ func init() {
 	pulumiEstimateCmd.Flags().StringVar(&pulumiEstimateStack, "stack", "", "Pulumi stack name to load config from, e.g. \"dev\"")
 	pulumiEstimateCmd.Flags().StringArrayVar(&pulumiEstimateConfigFlags, "config", nil, "Set a config value, e.g. --config cfg:autoscalingGroupSize=1 (can be repeated)")
 	pulumiEstimateCmd.Flags().StringArrayVar(&pulumiEstimateUsageFlags, "usage", nil, "Monthly usage for a usage-based resource, e.g. --usage my-api=5000000 (can be repeated)")
+	pulumiEstimateCmd.Flags().StringArrayVar(&pulumiEstimateModelFlags, "model", nil, "Pricing model override, e.g. --model \"Reserved:standard:1yr\" or --model \"my-ec2=spot\" (can be repeated)")
+	pulumiEstimateCmd.Flags().StringVarP(&pulumiEstimateOutput, "output", "o", "table", "Output format: table or json")
 }
 
 // pulumiYAML is the minimal subset of Pulumi.yaml we need.
-// runtime can be either a plain string ("go", "nodejs") or an object
-// with a name field ({name: python, options: {virtualenv: venv}}).
 type pulumiYAML struct {
 	Runtime  pulumiRuntime       `yaml:"runtime"`
 	Template *pulumiYAMLTemplate `yaml:"template"`
@@ -111,18 +113,27 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 		dir = args[0]
 	}
 
+	jsonMode := pulumiEstimateOutput == "json"
+	logf := func(format string, a ...any) {
+		if jsonMode {
+			fmt.Fprintf(os.Stderr, format, a...)
+		} else {
+			fmt.Printf(format, a...)
+		}
+	}
+
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return fmt.Errorf("resolving path: %w", err)
 	}
 
-	// 1. Detect Pulumi project
+	//Detect Pulumi project
 	projectInfo, err := detectPulumiProject(absDir)
 	if err != nil {
 		return err
 	}
 
-	// Apply --config flags on top of whatever was loaded from stack files (highest priority).
+	// Apply --config flags on top of whatever was loaded from stack files.
 	if len(pulumiEstimateConfigFlags) > 0 {
 		if projectInfo.Config == nil {
 			projectInfo.Config = make(map[string]string)
@@ -136,57 +147,73 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Printf("Detected Pulumi project %q (runtime: %s, stack: %s) in %s\n", projectInfo.Name, projectInfo.Runtime, projectInfo.Stack, absDir)
+	logf("Detected Pulumi project %q (runtime: %s, stack: %s) in %s\n", projectInfo.Name, projectInfo.Runtime, projectInfo.Stack, absDir)
 
-	// 2. Start mock gRPC servers
+	// Start mock gRPC servers
 	srv, err := internalpulumi.StartMockGRPCServer()
 	if err != nil {
 		return fmt.Errorf("starting mock server: %w", err)
 	}
 	defer srv.Stop()
-	// Pass stack config so the collector can resolve region from "aws:region" etc.
+	// Pass stack config
 	if len(projectInfo.Config) > 0 {
 		srv.Collector.SetStackConfig(projectInfo.Config)
 	}
-	fmt.Printf("Mock monitor listening on %s\n", srv.MonitorAddr)
+	logf("Mock monitor listening on %s\n", srv.MonitorAddr)
 
-	// 3. Ensure dependencies are installed.
-	// For Python: track whether the venv already existed so we know whether to clean it up.
+	// logWriter is the destination for subprocess stdout/stderr output.
+	logWriter := io.Writer(os.Stdout)
+	if jsonMode {
+		logWriter = os.Stderr
+	}
+
+	// Ensure dependencies are installed.
 	venvCreatedByUs := false
 	if projectInfo.Runtime == "python" {
-		venvPath := filepath.Join(absDir, pythonVenvDir(projectInfo.Virtualenv))
-		if _, err := os.Stat(venvPath); os.IsNotExist(err) {
-			// Venv doesn't exist yet — if we create it, we own it.
+		if jsonMode {
+			// Use a unique temp venv name to avoid colliding with any existing venv.
+			projectInfo.Virtualenv = fmt.Sprintf("venv-cloudcent-%d", time.Now().UnixNano())
 			venvCreatedByUs = true
+		} else {
+			venvPath := filepath.Join(absDir, pythonVenvDir(projectInfo.Virtualenv))
+			if _, err := os.Stat(venvPath); os.IsNotExist(err) {
+				// Venv doesn't exist yet — if we create it, we own it.
+				venvCreatedByUs = true
+			}
 		}
 	}
 
 	// Register cleanup before attempting installation so the venv is removed
-	// on both success and failure paths (including install errors).
 	if venvCreatedByUs {
 		venvDir := pythonVenvDir(projectInfo.Virtualenv)
 		defer func() {
 			venvPath := filepath.Join(absDir, venvDir)
-			fmt.Printf("Cleaning up venv at %s\n", venvPath)
+			logf("Cleaning up venv at %s\n", venvPath)
 			os.RemoveAll(venvPath)
 		}()
 	}
 
 	needsInstall, installDesc := checkDependencies(projectInfo.Runtime, absDir, projectInfo.Virtualenv)
 	if needsInstall {
-		fmt.Printf("\nDependencies needed: %s\n", installDesc)
-		fmt.Print("Install now? [y/N] ")
-		var answer string
-		fmt.Scanln(&answer)
-		if answer != "y" && answer != "Y" {
-			return fmt.Errorf("aborted — install dependencies manually and retry")
-		}
-		if err := ensureDependencies(projectInfo.Runtime, absDir, projectInfo.Virtualenv); err != nil {
-			return fmt.Errorf("installing dependencies: %w", err)
+		if jsonMode {
+			logf("\nAuto-installing dependencies: %s\n", installDesc)
+			if err := ensureDependenciesTo(projectInfo.Runtime, absDir, projectInfo.Virtualenv, logWriter); err != nil {
+				return fmt.Errorf("installing dependencies: %w", err)
+			}
+		} else {
+			logf("\nDependencies needed: %s\n", installDesc)
+			logf("Install now? [y/N] ")
+			var answer string
+			fmt.Scanln(&answer)
+			if answer != "y" && answer != "Y" {
+				return fmt.Errorf("aborted — install dependencies manually and retry")
+			}
+			if err := ensureDependenciesTo(projectInfo.Runtime, absDir, projectInfo.Virtualenv, logWriter); err != nil {
+				return fmt.Errorf("installing dependencies: %w", err)
+			}
 		}
 	}
-	// 4. Pre-scan source files for required config keys and auto-fill non-pricing
-	//    ones with dummy values so the user doesn't have to pass them manually.
+	//Pre-scan source files for required config keys and auto-fill non-pricing
 	scannedKeys := scanRequiredConfigKeys(absDir, projectInfo.Name, projectInfo.Runtime)
 	if len(scannedKeys) > 0 {
 		if projectInfo.Config == nil {
@@ -196,7 +223,7 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 		var pricingKeys []string
 		for _, k := range scannedKeys {
 			if projectInfo.Config[k] != "" {
-				continue // already set by user via --config or stack file
+				continue
 			}
 			if isPricingRelevantConfigKey(k) {
 				pricingKeys = append(pricingKeys, k)
@@ -207,22 +234,22 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 			filledKeys = append(filledKeys, k)
 		}
 		if len(filledKeys) > 0 {
-			fmt.Printf("\nAuto-filled %d non-pricing config key(s) with dummy values:\n", len(filledKeys))
+			logf("\nAuto-filled %d non-pricing config key(s) with dummy values:\n", len(filledKeys))
 			for _, k := range filledKeys {
-				fmt.Printf("  %s = %s\n", k, projectInfo.Config[k])
+				logf("  %s = %s\n", k, projectInfo.Config[k])
 			}
-			fmt.Println()
+			logf("\n")
 		}
 		if len(pricingKeys) > 0 {
-			fmt.Printf("Note: %d pricing-relevant config key(s) still need manual values:\n", len(pricingKeys))
+			logf("Note: %d pricing-relevant config key(s) still need manual values:\n", len(pricingKeys))
 			for _, k := range pricingKeys {
-				fmt.Printf("  • %s\n", k)
+				logf("  • %s\n", k)
 			}
-			fmt.Printf("\nRe-run with --config for each key, e.g.:\n  %s pulumi estimate", os.Args[0])
+			logf("\nRe-run with --config for each key, e.g.:\n  %s pulumi estimate", os.Args[0])
 			for _, k := range pricingKeys {
-				fmt.Printf(" --config %s=<value>", k)
+				logf(" --config %s=<value>", k)
 			}
-			fmt.Println()
+			logf("\n")
 			return fmt.Errorf("missing pricing-relevant config — see above")
 		}
 	}
@@ -232,12 +259,12 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 		srv.Collector.SetStackConfig(projectInfo.Config)
 	}
 
-	// 5. Run the user program.
-	if err := runUserProgram(projectInfo, absDir, srv.MonitorAddr, srv.EngineAddr); err != nil {
+	// Run the user program.
+	if err := runUserProgramTo(projectInfo, absDir, srv.MonitorAddr, srv.EngineAddr, logWriter); err != nil {
 		return fmt.Errorf("running user program: %w", err)
 	}
 
-	// 6. Wait for the program to finish registering all resources
+	// Wait for the program to finish registering all resources
 	srv.Collector.Wait()
 
 	// Propagate TaskDefinition attributes (cpu, memory, runtimePlatform) into
@@ -248,7 +275,7 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 	// 7. Print collected resources
 	resources := srv.Collector.Resources
 	if len(resources) == 0 {
-		fmt.Println("No resources detected.")
+		logf("No resources detected.\n")
 		return nil
 	}
 
@@ -272,24 +299,30 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(decodedResources) == 0 {
-		fmt.Println("No resources detected.")
+		logf("No resources detected.\n")
 		return nil
 	}
 
 	// Parse --usage flags into a map: resource-name → monthly quantity.
 	usageMap := parseUsageFlags(pulumiEstimateUsageFlags)
+	// Parse --model flags into a map: resource-name → ModelSelector.
+	modelMap := parseModelFlags(pulumiEstimateModelFlags)
 
-	fmt.Printf("\n=== Resources to be created: %d ===\n", len(decodedResources))
+	logf("\n=== Resources to be created: %d ===\n", len(decodedResources))
 	client, apiError := api.New()
 	if apiError != nil {
 		return fmt.Errorf("pricing api error: %w", err)
 	}
-	estimatedResources, estimateError := estimate.EstimateAllResources(client, decodedResources, usageMap)
+	estimatedResources, estimateError := estimate.EstimateAllResources(client, decodedResources, usageMap, modelMap)
 	if estimateError != nil {
 		return fmt.Errorf("estimating resources: %w", estimateError)
 	}
 
-	estimate.PrintResults(estimatedResources)
+	if jsonMode {
+		estimate.PrintResultsJSON(estimatedResources)
+	} else {
+		estimate.PrintResults(estimatedResources)
+	}
 
 	return nil
 }
@@ -351,7 +384,7 @@ func detectPulumiProject(dir string) (pulumiProjectInfo, error) {
 	}
 
 	if len(configValues) > 0 {
-		fmt.Printf("Resolved config: %v\n", configValues)
+		fmt.Fprintf(os.Stderr, "Resolved config: %v\n", configValues)
 	}
 
 	return pulumiProjectInfo{
@@ -470,6 +503,10 @@ func pulumiStackPath(dir, stackConfigDir, stack string) string {
 }
 
 func runUserProgram(projectInfo pulumiProjectInfo, dir, monitorAddr, engineAddr string) error {
+	return runUserProgramTo(projectInfo, dir, monitorAddr, engineAddr, os.Stdout)
+}
+
+func runUserProgramTo(projectInfo pulumiProjectInfo, dir, monitorAddr, engineAddr string, logWriter io.Writer) error {
 	env := append(os.Environ(),
 		"PULUMI_MONITOR="+monitorAddr,
 		"PULUMI_ENGINE="+engineAddr,
@@ -557,7 +594,7 @@ func runUserProgram(projectInfo pulumiProjectInfo, dir, monitorAddr, engineAddr 
 
 	c.Dir = dir
 	c.Env = env
-	c.Stdout = os.Stdout
+	c.Stdout = logWriter
 
 	// Capture stderr while still printing it, so callers can inspect error
 	// messages (e.g. missing required configuration variables).
@@ -588,8 +625,8 @@ func runUserProgram(projectInfo pulumiProjectInfo, dir, monitorAddr, engineAddr 
 		// Kill the hung process.
 		c.Process.Kill()
 		<-done // reap
-		fmt.Printf("\n⚠ Program timed out after %s (likely due to docker.Image, mysql.Provider, or similar side-effect resources).\n", programTimeout)
-		fmt.Println("  Resources registered before the timeout will still be used for estimation.")
+		fmt.Fprintf(logWriter, "\n⚠ Program timed out after %s (likely due to docker.Image, mysql.Provider, or similar side-effect resources).\n", programTimeout)
+		fmt.Fprintln(logWriter, "  Resources registered before the timeout will still be used for estimation.")
 		return nil // treat as partial success
 	}
 }
@@ -668,31 +705,36 @@ func checkDependencies(runtime, dir, venv string) (needed bool, desc string) {
 
 // ensureDependencies installs missing dependencies for the given runtime.
 func ensureDependencies(runtime, dir, venv string) error {
+	return ensureDependenciesTo(runtime, dir, venv, os.Stdout)
+}
+
+// ensureDependenciesTo installs missing dependencies, writing progress to w.
+func ensureDependenciesTo(runtime, dir, venv string, w io.Writer) error {
 	switch runtime {
 	case "go":
-		fmt.Println("Downloading Go modules…")
+		fmt.Fprintln(w, "Downloading Go modules…")
 		c := exec.Command("go", "mod", "download")
 		c.Dir = dir
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		return c.Run()
 
 	case "nodejs", "node":
-		fmt.Println("Running npm install…")
+		fmt.Fprintln(w, "Running npm install…")
 		c := exec.Command("npm", "install")
 		c.Dir = dir
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		return c.Run()
 
 	case "python":
-		return ensurePythonDependencies(dir, venv)
+		return ensurePythonDependenciesTo(dir, venv, w)
 
 	case "dotnet":
-		fmt.Println("Restoring .NET packages…")
+		fmt.Fprintln(w, "Restoring .NET packages…")
 		c := exec.Command("dotnet", "restore")
 		c.Dir = dir
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		return c.Run()
 	}
@@ -703,21 +745,26 @@ func ensureDependencies(runtime, dir, venv string) error {
 // requirements.txt. Uses `uv` when available for faster installs, otherwise
 // falls back to the standard `python3 -m venv` + `pip` workflow.
 func ensurePythonDependencies(dir, venv string) error {
+	return ensurePythonDependenciesTo(dir, venv, os.Stdout)
+}
+
+// ensurePythonDependenciesTo is the writer-aware version of ensurePythonDependencies.
+func ensurePythonDependenciesTo(dir, venv string, w io.Writer) error {
 	venvDir := pythonVenvDir(venv)
 	venvPath := filepath.Join(dir, venvDir)
 
 	if hasUV() {
-		return ensurePythonDependenciesUV(dir, venvPath)
+		return ensurePythonDependenciesUV(dir, venvPath, w)
 	}
-	return ensurePythonDependenciesPip(dir, venvPath)
+	return ensurePythonDependenciesPip(dir, venvPath, w)
 }
 
 // ensurePythonDependenciesUV uses `uv` to create the venv and install packages.
-func ensurePythonDependenciesUV(dir, venvPath string) error {
-	fmt.Printf("Creating venv at %s (using uv)…\n", venvPath)
+func ensurePythonDependenciesUV(dir, venvPath string, w io.Writer) error {
+	fmt.Fprintf(w, "Creating venv at %s (using uv)…\n", venvPath)
 	c := exec.Command("uv", "venv", venvPath)
 	c.Dir = dir
-	c.Stdout = os.Stdout
+	c.Stdout = w
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("creating venv with uv: %w", err)
@@ -731,7 +778,7 @@ func ensurePythonDependenciesUV(dir, venvPath string) error {
 
 	switch {
 	case fileExists(pyprojectFile):
-		fmt.Println("Installing Python dependencies from pyproject.toml (using uv)…")
+		fmt.Fprintln(w, "Installing Python dependencies from pyproject.toml (using uv)…")
 		// Non-package mode projects (e.g. Poetry with package-mode = false) cannot
 		// be installed with `pip install -e .` because there is nothing to build.
 		// In that case, extract the dependency list and install packages directly.
@@ -747,18 +794,18 @@ func ensurePythonDependenciesUV(dir, venvPath string) error {
 		}
 		c.Dir = dir
 		c.Env = uvEnv
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
 			return fmt.Errorf("installing dependencies from pyproject.toml with uv: %w", err)
 		}
 	case fileExists(reqFile):
-		fmt.Println("Installing Python dependencies (using uv)…")
+		fmt.Fprintln(w, "Installing Python dependencies (using uv)…")
 		c = exec.Command("uv", "pip", "install", "-r", "requirements.txt", "-q")
 		c.Dir = dir
 		// Set VIRTUAL_ENV so uv pip knows which environment to install into.
 		c.Env = uvEnv
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
 			return fmt.Errorf("installing dependencies with uv: %w", err)
@@ -768,11 +815,11 @@ func ensurePythonDependenciesUV(dir, venvPath string) error {
 }
 
 // ensurePythonDependenciesPip uses the standard library venv + pip workflow.
-func ensurePythonDependenciesPip(dir, venvPath string) error {
-	fmt.Printf("Creating venv at %s…\n", venvPath)
+func ensurePythonDependenciesPip(dir, venvPath string, w io.Writer) error {
+	fmt.Fprintf(w, "Creating venv at %s…\n", venvPath)
 	c := exec.Command("python3", "-m", "venv", venvPath)
 	c.Dir = dir
-	c.Stdout = os.Stdout
+	c.Stdout = w
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("creating venv: %w", err)
@@ -786,7 +833,7 @@ func ensurePythonDependenciesPip(dir, venvPath string) error {
 
 	switch {
 	case fileExists(pyprojectFile):
-		fmt.Println("Installing Python dependencies from pyproject.toml…")
+		fmt.Fprintln(w, "Installing Python dependencies from pyproject.toml…")
 		// Non-package mode projects cannot be installed with `pip install -e .`.
 		// Extract the dependency list and install packages directly instead.
 		if isNonPackageMode(pyprojectFile) {
@@ -800,16 +847,16 @@ func ensurePythonDependenciesPip(dir, venvPath string) error {
 			c = exec.Command(venvPython, "-m", "pip", "install", "-e", ".", "-q")
 		}
 		c.Dir = dir
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
 			return fmt.Errorf("installing dependencies from pyproject.toml with pip: %w", err)
 		}
 	case fileExists(reqFile):
-		fmt.Println("Installing Python dependencies…")
+		fmt.Fprintln(w, "Installing Python dependencies…")
 		c = exec.Command(venvPython, "-m", "pip", "install", "-r", "requirements.txt", "-q")
 		c.Dir = dir
-		c.Stdout = os.Stdout
+		c.Stdout = w
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
 			return fmt.Errorf("installing dependencies with pip: %w", err)
@@ -1242,6 +1289,56 @@ func parseUsageFlags(flags []string) map[string]float64 {
 			continue
 		}
 		m[name] = qty
+	}
+	return m
+}
+
+// parseModelFlags parses --model flags into a map of resource name → ModelSelector.
+// Format: [resource-name=]Model[:PurchaseOption[:Term]]
+//
+// Examples:
+//
+//	--model "Reserved:standard:1yr"              → global selector (key "")
+//	--model "my-ec2=Reserved:standard:1yr"       → resource-specific
+//	--model "spot"                               → global spot
+//	--model "ComputeSavingsPlans:No Upfront:3yr" → global savings plan
+func parseModelFlags(flags []string) map[string]estimate.ModelSelector {
+	if len(flags) == 0 {
+		return nil
+	}
+	m := make(map[string]estimate.ModelSelector, len(flags))
+	for _, flag := range flags {
+		flag = strings.TrimSpace(flag)
+		if flag == "" {
+			continue
+		}
+
+		// Split off optional resource-name prefix: "name=Model:..."
+		resourceName := ""
+		spec := flag
+		if idx := strings.IndexByte(flag, '='); idx > 0 {
+			resourceName = strings.TrimSpace(flag[:idx])
+			spec = strings.TrimSpace(flag[idx+1:])
+		}
+
+		// Parse "Model[:PurchaseOption[:Term]]"
+		parts := strings.SplitN(spec, ":", 3)
+		sel := estimate.ModelSelector{
+			Model: strings.TrimSpace(parts[0]),
+		}
+		if len(parts) >= 2 {
+			sel.PurchaseOption = strings.TrimSpace(parts[1])
+		}
+		if len(parts) >= 3 {
+			sel.Term = strings.TrimSpace(parts[2])
+		}
+		if sel.Model == "" {
+			continue
+		}
+		m[resourceName] = sel
+	}
+	if len(m) == 0 {
+		return nil
 	}
 	return m
 }

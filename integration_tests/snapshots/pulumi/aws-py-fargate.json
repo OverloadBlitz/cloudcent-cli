@@ -1,0 +1,79 @@
+{
+  "resources": [
+    {
+      "name": "cluster",
+      "props": {
+        "type": "aws:ecs/cluster:Cluster"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "web-secgrp",
+      "props": {
+        "type": "aws:ec2/securityGroup:SecurityGroup"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "task-exec-role",
+      "props": {
+        "type": "aws:iam/role:Role"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "app-tg",
+      "props": {
+        "type": "aws:lb/targetGroup:TargetGroup"
+      },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "task-exec-policy",
+      "props": {
+        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "app-task",
+      "props": {
+        "type": "aws:ecs/taskDefinition:TaskDefinition"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "app-lb",
+      "props": {
+        "type": "aws:lb/loadBalancer:LoadBalancer"
+      },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "web",
+      "props": {
+        "type": "aws:lb/listener:Listener"
+      },
+      "status": "Sorry, not supported yet"
+    },
+    {
+      "name": "app-svc",
+      "sub_label": "CPU",
+      "props": {
+        "type": "aws:ecs/service:Service"
+      },
+      "on_demand_rate": "0.03238"
+    },
+    {
+      "name": "app-svc",
+      "sub_label": "Memory",
+      "props": {
+        "type": "aws:ecs/service:Service"
+      },
+      "on_demand_rate": "0.00356"
+    }
+  ],
+  "totals": {
+    "monthly_total": "26.24"
+  }
+}

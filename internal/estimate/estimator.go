@@ -98,10 +98,108 @@ func isHourlyUnit(unit string) bool {
 	return hourlyUnits[strings.ToLower(strings.TrimSpace(unit))]
 }
 
+// ModelSelector specifies which pricing model to use for a resource.
+// All fields are case-insensitive. Empty fields are treated as wildcards.
+type ModelSelector struct {
+	Model          string // e.g. "Reserved", "ComputeSavingsPlans", "spot"
+	PurchaseOption string // e.g. "standard", "No Upfront" — optional
+	Term           string // e.g. "1yr", "3yr" — optional
+}
+
+// termToHours converts a term string to the number of hours in that term.
+// Returns 0 for unknown terms.
+func termToHours(term string) int64 {
+	switch strings.TrimSpace(strings.ToLower(term)) {
+	case "1yr", "1y":
+		return 8760
+	case "3yr", "3y":
+		return 26280
+	default:
+		return 0
+	}
+}
+
+// amortizedHourlyRate returns the effective hourly rate for a PriceEntry,
+// spreading any upfront fee evenly over the term hours.
+// For entries with no upfront fee, this equals RatePerHr.
+func amortizedHourlyRate(e resources.PriceEntry) (rate decimal.Decimal, isAmortized bool) {
+	rate = e.RatePerHr
+	if e.UpfrontFee == "" || e.UpfrontFee == "0" {
+		return rate, false
+	}
+	upfront, err := decimal.NewFromString(e.UpfrontFee)
+	if err != nil || upfront.IsZero() {
+		return rate, false
+	}
+	termHours := termToHours(e.Term)
+	if termHours <= 0 {
+		return rate, false
+	}
+	amortized := upfront.Div(decimal.NewFromInt(termHours))
+	return rate.Add(amortized), true
+}
+
+// applyModelSelector finds the best matching PriceEntry for the given selector,
+// marks it as IsCurrent (and clears all others), and returns the effective
+// hourly rate (with upfront amortized). Returns the original OnDemand rate
+// and isAmortized=false when no match is found.
+func applyModelSelector(entries []resources.PriceEntry, sel ModelSelector) (selected []resources.PriceEntry, effectiveRate decimal.Decimal, isAmortized bool) {
+	// Find all candidates that match the selector.
+	type candidate struct {
+		idx  int
+		rate decimal.Decimal
+		amrt bool
+	}
+	var candidates []candidate
+
+	for i, e := range entries {
+		if !strings.EqualFold(strings.TrimSpace(e.Model), strings.TrimSpace(sel.Model)) {
+			continue
+		}
+		if sel.PurchaseOption != "" && !strings.EqualFold(strings.TrimSpace(e.PurchaseOption), strings.TrimSpace(sel.PurchaseOption)) {
+			continue
+		}
+		if sel.Term != "" && !strings.EqualFold(strings.TrimSpace(e.Term), strings.TrimSpace(sel.Term)) {
+			continue
+		}
+		r, amrt := amortizedHourlyRate(e)
+		candidates = append(candidates, candidate{i, r, amrt})
+	}
+
+	if len(candidates) == 0 {
+		// No match — keep original IsCurrent flags, return OnDemand rate.
+		for _, e := range entries {
+			if e.IsCurrent {
+				r, amrt := amortizedHourlyRate(e)
+				return entries, r, amrt
+			}
+		}
+		return entries, decimal.Zero, false
+	}
+
+	// Pick the candidate with the lowest effective rate.
+	best := candidates[0]
+	for _, c := range candidates[1:] {
+		if c.rate.LessThan(best.rate) {
+			best = c
+		}
+	}
+
+	// Update IsCurrent flags.
+	result := make([]resources.PriceEntry, len(entries))
+	copy(result, entries)
+	for i := range result {
+		result[i].IsCurrent = (i == best.idx)
+	}
+
+	return result, best.rate, best.amrt
+}
+
 // EstimateAllResources estimates costs for all resources.
 // usageMap maps resource name → monthly quantity for usage-based resources.
-// Pass nil or an empty map to use the built-in default (1 million units/mo).
-func EstimateAllResources(client batchPricingFetcher, records []resources.DecodedResource, usageMap map[string]float64) ([]resources.EstimateResult, error) {
+// modelMap maps resource name (or "" for global) → ModelSelector to override the default OnDemand model.
+// Pass nil or an empty map to use the built-in defaults.
+func EstimateAllResources(client batchPricingFetcher, records []resources.DecodedResource, usageMap map[string]float64, modelMap map[string]ModelSelector) ([]resources.EstimateResult, error) {
 	if client == nil {
 		return nil, fmt.Errorf("nil pricing client")
 	}
@@ -206,6 +304,39 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 			continue
 		}
 
+		// Apply model selector: resource-specific key wins over global ("").
+		effectiveRate := onDemand
+		isAmortized := false
+		if modelMap != nil {
+			// Look up model selector: name/SubLabel first (most specific), then bare name, then global "".
+			sel, ok := modelMap[record.Name+"/"+record.SubLabel]
+			if !ok && record.SubLabel != "" {
+				// bare name applies to all sub-labels
+				sel, ok = modelMap[record.Name]
+			}
+			if !ok {
+				sel, ok = modelMap[""]
+			}
+			if ok {
+				entries, effectiveRate, isAmortized = applyModelSelector(entries, sel)
+			} else {
+				// No selector — amortize the OnDemand entry anyway (usually no upfront, so no-op).
+				for _, e := range entries {
+					if e.IsCurrent {
+						effectiveRate, isAmortized = amortizedHourlyRate(e)
+						break
+					}
+				}
+			}
+		} else {
+			for _, e := range entries {
+				if e.IsCurrent {
+					effectiveRate, isAmortized = amortizedHourlyRate(e)
+					break
+				}
+			}
+		}
+
 		// Detect whether this resource is usage-based (unit != Hrs).
 		isUsage, usageUnit := detectUsageBased(entries)
 
@@ -218,6 +349,8 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 			InputsJSON:     record.InputsJSON,
 			Prices:         entries,
 			OnDemandRate:   onDemand,
+			EffectiveRate:  effectiveRate,
+			IsAmortized:    isAmortized,
 			IsUsageBased:   isUsage,
 			UsageUnit:      usageUnit,
 			RegionFallback: record.RegionFallback,
@@ -228,9 +361,10 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 			est.UsageQty = qty
 			est.UsageDefault = isDefault
 			est.UsageMonthly = calcUsageMonthlyCost(entries, qty)
-			// Clear OnDemandRate for usage-based resources so the hourly
-			// totals box doesn't include them.
+			// Clear OnDemandRate and EffectiveRate for usage-based resources
+			// so the hourly totals box doesn't include them.
 			est.OnDemandRate = decimal.Zero
+			est.EffectiveRate = decimal.Zero
 		}
 
 		result = append(result, est)
@@ -463,6 +597,15 @@ func detectUsageBased(entries []resources.PriceEntry) (bool, string) {
 func resolveUsageQty(resourceName, service, subLabel, rawType string, usageMap map[string]float64) (qty float64, isDefault bool) {
 	// 1. User-supplied value takes highest priority.
 	if usageMap != nil {
+		// 1a. Exact name/SubLabel match — most specific, for 1:N resources
+		//     e.g. --usage my-lambda/Requests=5000000
+		if subLabel != "" {
+			if v, ok := usageMap[resourceName+"/"+subLabel]; ok && v > 0 {
+				return v, false
+			}
+		}
+		// 1b. Bare name match — applies to all sub-labels of this resource
+		//     e.g. --usage my-lambda=5000000
 		if v, ok := usageMap[resourceName]; ok && v > 0 {
 			return v, false
 		}

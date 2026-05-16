@@ -1,7 +1,9 @@
 package estimate
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -10,6 +12,139 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 	"github.com/shopspring/decimal"
 )
+
+// JSONTier is a single volume-pricing tier for JSON output.
+type JSONTier struct {
+	StartRange string `json:"start_range"`
+	EndRange   string `json:"end_range"`
+	Price      string `json:"price"`
+}
+
+// JSONPriceEntry is one pricing option for JSON output.
+type JSONPriceEntry struct {
+	Model          string     `json:"model"`
+	PurchaseOption string     `json:"purchase_option,omitempty"`
+	Term           string     `json:"term,omitempty"`
+	UpfrontFee     string     `json:"upfront_fee,omitempty"`
+	RatePerHr      string     `json:"rate_per_hr"`
+	Unit           string     `json:"unit"`
+	IsCurrent      bool       `json:"is_current"`
+	Tiers          []JSONTier `json:"tiers,omitempty"`
+}
+
+// JSONResource is one resource entry for JSON output.
+type JSONResource struct {
+	Name           string            `json:"name"`
+	SubLabel       string            `json:"sub_label,omitempty"`
+	Product        string            `json:"product"`
+	Region         string            `json:"region,omitempty"`
+	RegionFallback bool              `json:"region_fallback,omitempty"`
+	Props          map[string]string `json:"props,omitempty"`
+	Prices         []JSONPriceEntry  `json:"prices,omitempty"`
+	OnDemandRate   string            `json:"on_demand_rate,omitempty"`
+	Status         string            `json:"status,omitempty"`
+	// Usage-based fields
+	IsUsageBased bool    `json:"is_usage_based,omitempty"`
+	UsageUnit    string  `json:"usage_unit,omitempty"`
+	UsageQty     float64 `json:"usage_qty,omitempty"`
+	UsageDefault bool    `json:"usage_default,omitempty"`
+	UsageMonthly string  `json:"usage_monthly,omitempty"`
+}
+
+// JSONTotals holds the cost summary for JSON output.
+type JSONTotals struct {
+	HourlyRate    string `json:"hourly_rate"`
+	MonthlyHourly string `json:"monthly_hourly"`
+	MonthlyUsage  string `json:"monthly_usage,omitempty"`
+	MonthlyTotal  string `json:"monthly_total"`
+}
+
+// JSONOutput is the top-level JSON structure.
+type JSONOutput struct {
+	Resources []JSONResource `json:"resources"`
+	Totals    JSONTotals     `json:"totals"`
+}
+
+// PrintResultsJSON writes the estimate results as a JSON document to stdout.
+// It mirrors the same data as PrintResults but in a machine-readable format.
+func PrintResultsJSON(results []resources.EstimateResult) {
+	totalHourly := decimal.Zero
+	totalUsageMonthly := decimal.Zero
+
+	jsonResources := make([]JSONResource, 0, len(results))
+	for _, r := range results {
+		jr := JSONResource{
+			Name:           r.ResourceName,
+			SubLabel:       r.SubLabel,
+			Product:        r.Product,
+			RegionFallback: r.RegionFallback,
+			Props:          r.Props,
+			Status:         r.StatusMsg,
+		}
+
+		// Extract region from Props if present.
+		if r.Props != nil {
+			if region, ok := r.Props["region"]; ok {
+				jr.Region = region
+			}
+		}
+
+		if r.OnDemandRate.IsPositive() {
+			jr.OnDemandRate = r.OnDemandRate.String()
+			totalHourly = totalHourly.Add(r.EffectiveRate)
+		}
+
+		if r.IsUsageBased {
+			jr.IsUsageBased = true
+			jr.UsageUnit = r.UsageUnit
+			jr.UsageQty = r.UsageQty
+			jr.UsageDefault = r.UsageDefault
+			jr.UsageMonthly = r.UsageMonthly.String()
+			if r.UsageMonthly.IsPositive() {
+				totalUsageMonthly = totalUsageMonthly.Add(r.UsageMonthly)
+			}
+		}
+
+		for _, p := range r.Prices {
+			jp := JSONPriceEntry{
+				Model:          p.Model,
+				PurchaseOption: p.PurchaseOption,
+				Term:           p.Term,
+				UpfrontFee:     p.UpfrontFee,
+				RatePerHr:      p.RatePerHr.String(),
+				Unit:           p.Unit,
+				IsCurrent:      p.IsCurrent,
+			}
+			for _, t := range p.Tiers {
+				jp.Tiers = append(jp.Tiers, JSONTier{
+					StartRange: t.StartRange,
+					EndRange:   t.EndRange,
+					Price:      t.Price,
+				})
+			}
+			jr.Prices = append(jr.Prices, jp)
+		}
+
+		jsonResources = append(jsonResources, jr)
+	}
+
+	monthly := totalHourly.Mul(decimal.NewFromInt(hoursPerMonth))
+	monthlyTotal := monthly.Add(totalUsageMonthly)
+
+	out := JSONOutput{
+		Resources: jsonResources,
+		Totals: JSONTotals{
+			HourlyRate:    totalHourly.String(),
+			MonthlyHourly: monthly.String(),
+			MonthlyUsage:  totalUsageMonthly.String(),
+			MonthlyTotal:  monthlyTotal.String(),
+		},
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(out)
+}
 
 var (
 	colHeader  = lipgloss.Color("#94A3B8")
@@ -117,13 +252,26 @@ func PrintResults(results []resources.EstimateResult) {
 				continue
 			}
 
-			fmt.Println(renderPricesTable(r.Prices))
+			fmt.Println(renderPricesTableWithUsage(r.Prices, r.UsageQty))
+
+			// Show effective rate when upfront has been amortized.
+			if r.IsAmortized && r.EffectiveRate.IsPositive() {
+				amortSt := lipgloss.NewStyle().Foreground(lipgloss.Color("#38BDF8"))
+				fmt.Printf("    %s %s\n",
+					mutedSt.Render(fmt.Sprintf("%-18s", "Effective rate")),
+					amortSt.Render("$"+r.EffectiveRate.StringFixed(10)+"/hr (upfront amortized)"),
+				)
+			}
 
 			if r.IsUsageBased {
 				if r.UsageDefault {
 					defaultQtySt := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
+					usageKey := r.ResourceName
+					if r.SubLabel != "" {
+						usageKey = r.ResourceName + "/" + r.SubLabel
+					}
 					qtyPart := defaultQtySt.Render(formatUsageQty(r.UsageQty)+" "+r.UsageUnit+"/mo") +
-						" " + mutedSt.Render("(default — use --usage to override)")
+						" " + mutedSt.Render(fmt.Sprintf("(default — use --usage %s=<qty> to override)", usageKey))
 					fmt.Printf("    %s %s  →  %s\n",
 						mutedSt.Render(fmt.Sprintf("%-18s", "Usage estimate")),
 						qtyPart,
@@ -148,8 +296,8 @@ func PrintResults(results []resources.EstimateResult) {
 	hasUsageCost := false
 
 	for _, r := range results {
-		if r.OnDemandRate.IsPositive() {
-			totalHourly = totalHourly.Add(r.OnDemandRate)
+		if r.EffectiveRate.IsPositive() {
+			totalHourly = totalHourly.Add(r.EffectiveRate)
 			hasHourlyCost = true
 		}
 		if r.IsUsageBased && r.UsageMonthly.IsPositive() {
@@ -161,7 +309,8 @@ func PrintResults(results []resources.EstimateResult) {
 	fmt.Println()
 	if hasHourlyCost || hasUsageCost {
 		monthly := totalHourly.Mul(decimal.NewFromInt(hoursPerMonth))
-		fmt.Println(renderTotalsBox(totalHourly, monthly, totalUsageMonthly, hasUsageCost))
+		monthlyTotal := monthly.Add(totalUsageMonthly)
+		fmt.Println(renderTotalsTable(results, monthlyTotal))
 	} else {
 		fmt.Println(mutedSt.Render("Total: no billable resources found"))
 	}
@@ -183,6 +332,10 @@ func PrintResults(results []resources.EstimateResult) {
 }
 
 func renderPricesTable(prices []resources.PriceEntry) string {
+	return renderPricesTableWithUsage(prices, 0)
+}
+
+func renderPricesTableWithUsage(prices []resources.PriceEntry, usageQty float64) string {
 	// Check if any entry has tiered pricing.
 	hasTiers := false
 	for _, p := range prices {
@@ -193,7 +346,7 @@ func renderPricesTable(prices []resources.PriceEntry) string {
 	}
 
 	if hasTiers {
-		return renderTieredPricesTable(prices)
+		return renderTieredPricesTable(prices, usageQty)
 	}
 	return renderFlatPricesTable(prices)
 }
@@ -239,12 +392,7 @@ func renderFlatPricesTable(prices []resources.PriceEntry) string {
 			}
 			row = append(row, upfront)
 		}
-		unit := "$/hr"
-		if p.Unit != "" && !strings.EqualFold(p.Unit, "Hrs") {
-			unit = "$/" + p.Unit
-		}
-		_ = unit // used in header
-		row = append(row, p.RatePerHr.String())
+		row = append(row, p.RatePerHr.String(), p.Unit)
 		rows = append(rows, row)
 	}
 
@@ -258,12 +406,7 @@ func renderFlatPricesTable(prices []resources.PriceEntry) string {
 	if hasUpfront {
 		headers = append(headers, "Upfront")
 	}
-	// Pick the rate column header from the first entry's unit.
-	rateHeader := "$/hr"
-	if len(prices) > 0 && prices[0].Unit != "" && !strings.EqualFold(prices[0].Unit, "Hrs") {
-		rateHeader = "$/" + prices[0].Unit
-	}
-	headers = append(headers, rateHeader)
+	headers = append(headers, "Price", "Unit")
 
 	headerSt := lipgloss.NewStyle().
 		Foreground(colHeader).
@@ -294,7 +437,8 @@ func renderFlatPricesTable(prices []resources.PriceEntry) string {
 }
 
 // renderTieredPricesTable renders volume-tiered pricing with one row per tier.
-func renderTieredPricesTable(prices []resources.PriceEntry) string {
+// usageQty > 0 causes all tiers that the usage quantity touches to be highlighted.
+func renderTieredPricesTable(prices []resources.PriceEntry, usageQty float64) string {
 	headerSt := lipgloss.NewStyle().
 		Foreground(colHeader).
 		Bold(true).
@@ -305,62 +449,159 @@ func renderTieredPricesTable(prices []resources.PriceEntry) string {
 		Bold(true).
 		Padding(0, 1)
 
+	// Build a set of row indices that are "active" (touched by usageQty).
+	// A tier is active when usageQty > startRange (i.e. some usage falls in
+	// this tier or a later one). We walk the OnDemand tiers and mark each
+	// tier that receives at least 1 unit.
+	activeRows := map[int]bool{}
+	if usageQty > 0 {
+		qty := decimal.NewFromFloat(usageQty)
+		remaining := qty
+		rowIdx := 0
+		for _, p := range prices {
+			if !p.IsCurrent {
+				if len(p.Tiers) == 0 {
+					rowIdx++
+				} else {
+					rowIdx += len(p.Tiers)
+				}
+				continue
+			}
+			if len(p.Tiers) == 0 {
+				activeRows[rowIdx] = true
+				rowIdx++
+				break
+			}
+			for _, tier := range p.Tiers {
+				if remaining.IsZero() || remaining.IsNegative() {
+					rowIdx++
+					continue
+				}
+				start := decimal.Zero
+				if tier.StartRange != "" {
+					if d, err := decimal.NewFromString(tier.StartRange); err == nil {
+						start = d
+					}
+				}
+				isInf := tier.EndRange == "" ||
+					strings.EqualFold(tier.EndRange, "inf") ||
+					strings.EqualFold(tier.EndRange, "infinity")
+				var tierSize decimal.Decimal
+				if isInf {
+					tierSize = remaining
+				} else {
+					if end, err := decimal.NewFromString(tier.EndRange); err == nil {
+						tierSize = end.Sub(start)
+					} else {
+						tierSize = remaining
+					}
+				}
+				units := remaining
+				if units.GreaterThan(tierSize) {
+					units = tierSize
+				}
+				if units.IsPositive() {
+					activeRows[rowIdx] = true
+				}
+				remaining = remaining.Sub(units)
+				rowIdx++
+			}
+			break
+		}
+	}
+
 	rows := make([][]string, 0)
-	currentRow := -1
+	rowIdx := 0
+
+	// Detect optional columns across all entries.
+	hasOption, hasTerm := false, false
+	for _, p := range prices {
+		if p.PurchaseOption != "" {
+			hasOption = true
+		}
+		if p.Term != "" {
+			hasTerm = true
+		}
+	}
 
 	for _, p := range prices {
 		isCurrent := p.IsCurrent
 
 		if len(p.Tiers) == 0 {
-			// Single-rate entry among tiered ones — show one row.
-			if isCurrent && currentRow == -1 {
-				currentRow = len(rows)
-			}
 			marker := ""
 			if isCurrent {
 				marker = "▶"
 			}
-			rows = append(rows, []string{
-				marker, p.Model, "-", "-",
-				p.RatePerHr.String(),
-				p.Unit,
-			})
+			row := []string{marker, p.Model}
+			if hasOption {
+				row = append(row, p.PurchaseOption)
+			}
+			if hasTerm {
+				row = append(row, p.Term)
+			}
+			row = append(row, "-", "-", p.RatePerHr.String(), p.Unit)
+			rows = append(rows, row)
+			rowIdx++
 			continue
 		}
 
 		for i, tier := range p.Tiers {
-			if isCurrent && currentRow == -1 {
-				currentRow = len(rows)
-			}
 			marker := ""
-			if isCurrent && i == 0 {
+			if isCurrent && activeRows[rowIdx] {
 				marker = "▶"
 			}
 			model := ""
 			if i == 0 {
 				model = p.Model
 			}
-			rows = append(rows, []string{
-				marker,
-				model,
+			row := []string{marker, model}
+			if hasOption {
+				opt := ""
+				if i == 0 {
+					opt = p.PurchaseOption
+				}
+				row = append(row, opt)
+			}
+			if hasTerm {
+				term := ""
+				if i == 0 {
+					term = p.Term
+				}
+				row = append(row, term)
+			}
+			row = append(row,
 				formatRange(tier.StartRange),
 				formatRange(tier.EndRange),
 				tier.Price,
 				p.Unit,
-			})
+			)
+			rows = append(rows, row)
+			rowIdx++
 		}
 	}
 
+	headers := []string{"", "Model"}
+	if hasOption {
+		headers = append(headers, "Purchase Option")
+	}
+	if hasTerm {
+		headers = append(headers, "Term")
+	}
+	headers = append(headers, "Start Range", "End Range", "Price", "Unit")
+
+	// StyleFunc highlights all active rows (those touched by usageQty).
+	// We need to map table row index back to our rowIdx tracking.
+	// Since rows are appended in order, row i in the table = rows[i].
 	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(colBorder)).
-		Headers("", "Model", "Start Range", "End Range", "Price", "Unit").
+		Headers(headers...).
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
 				return headerSt
 			}
-			if row == currentRow {
+			if activeRows[row] {
 				return currentSt
 			}
 			return cellSt
@@ -381,56 +622,140 @@ func formatRange(s string) string {
 	return s
 }
 
-func renderTotalsBox(hourly, monthly, usageMonthly decimal.Decimal, hasUsage bool) string {
-	labelSt := lipgloss.NewStyle().Foreground(colHeader)
-	valueSt := lipgloss.NewStyle().Foreground(colTitle).Bold(true)
-	mutedSt := lipgloss.NewStyle().Foreground(colMuted)
+// renderTotalsTable renders a summary table in the style of the design mockup:
+// each billable resource gets one row (name + sub_label left, pulumi type muted,
+// monthly cost right-aligned), with a highlighted "Total Estimated Cost" footer.
+func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.Decimal) string {
+	colTotalGreen := lipgloss.Color("#00D4AA")
+	headerSt := lipgloss.NewStyle().Foreground(colHeader).Bold(true).Padding(0, 1)
+	nameSt := lipgloss.NewStyle().Foreground(colTitle).Bold(true).Padding(0, 1)
+	typeSt := lipgloss.NewStyle().Foreground(colMuted).Padding(0, 1)
+	costSt := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true).Padding(0, 1)
+	totalLabelSt := lipgloss.NewStyle().Foreground(colTotalGreen).Bold(true).Padding(0, 1)
+	totalCostSt := lipgloss.NewStyle().Foreground(colTotalGreen).Bold(true).Padding(0, 1)
+	borderSt := lipgloss.NewStyle().Foreground(colBorder)
 
-	lines := []string{}
-
-	if hourly.IsPositive() {
-		lines = append(lines,
-			fmt.Sprintf("%s  %s",
-				labelSt.Render(fmt.Sprintf("%-24s", "Hourly resources")),
-				valueSt.Render(fmt.Sprintf("%s / hr", formatDecimal(hourly, 10))),
-			),
-			fmt.Sprintf("%s  %s",
-				labelSt.Render(fmt.Sprintf("%-24s", fmt.Sprintf("  → est. monthly (%dh)", hoursPerMonth))),
-				valueSt.Render(fmt.Sprintf("%s / mo", formatDecimal(monthly, 4))),
-			),
-		)
+	// Build one row per result — billable, free, and unsupported all included.
+	type row struct {
+		nameCol string
+		typeCol string
+		costCol string
+		isFree  bool
+		isUnsup bool
+		isTotal bool
 	}
+	var rows []row
 
-	if hasUsage {
-		if len(lines) > 0 {
-			lines = append(lines, mutedSt.Render(strings.Repeat("─", 42)))
+	for _, r := range results {
+		// Left column: resource name, with sub_label appended if present.
+		name := r.ResourceName
+		if r.SubLabel != "" {
+			name = r.ResourceName + " · " + r.SubLabel
 		}
-		lines = append(lines,
-			fmt.Sprintf("%s  %s",
-				labelSt.Render(fmt.Sprintf("%-24s", "Usage-based resources")),
-				valueSt.Render(fmt.Sprintf("%s / mo", formatDecimal(usageMonthly, 4))),
-			),
-			mutedSt.Render("  (based on supplied or default quantities)"),
-		)
+
+		// Middle column: pulumi type from Props["type"], fallback to RawType.
+		pulumiType := r.RawType
+		if r.Props != nil {
+			if t, ok := r.Props["type"]; ok && t != "" {
+				pulumiType = t
+			}
+		}
+
+		if r.StatusMsg != "" {
+			isFree := strings.Contains(r.StatusMsg, "free")
+			rows = append(rows, row{
+				nameCol: name,
+				typeCol: pulumiType,
+				costCol: r.StatusMsg,
+				isFree:  isFree,
+				isUnsup: !isFree,
+			})
+			continue
+		}
+
+		// Compute this resource's monthly cost.
+		var cost decimal.Decimal
+		if r.IsUsageBased {
+			cost = r.UsageMonthly
+		} else {
+			cost = r.EffectiveRate.Mul(decimal.NewFromInt(hoursPerMonth))
+		}
+
+		rows = append(rows, row{
+			nameCol: name,
+			typeCol: pulumiType,
+			costCol: formatDecimal(cost, 2),
+		})
 	}
 
-	if hourly.IsPositive() && hasUsage {
-		total := monthly.Add(usageMonthly)
-		lines = append(lines, mutedSt.Render(strings.Repeat("─", 42)))
-		lines = append(lines,
-			fmt.Sprintf("%s  %s",
-				labelSt.Render(fmt.Sprintf("%-24s", "Total estimated monthly")),
-				valueSt.Render(fmt.Sprintf("%s / mo", formatDecimal(total, 4))),
-			),
-		)
+	// Separator row + Total row.
+	rows = append(rows, row{
+		nameCol: "─",
+		typeCol: "─",
+		costCol: "─",
+	})
+	rows = append(rows, row{
+		nameCol: "Total Estimated Cost",
+		typeCol: "",
+		costCol: formatDecimal(monthlyTotal, 2),
+		isTotal: true,
+	})
+
+	// Render using lipgloss table.
+	tableRows := make([][]string, len(rows))
+	for i, r := range rows {
+		tableRows[i] = []string{r.nameCol, r.typeCol, r.costCol}
 	}
 
-	body := strings.Join(lines, "\n")
-	return lipgloss.NewStyle().
+	totalRowIdx := len(rows) - 1
+	sepRowIdx := len(rows) - 2
+
+	freeSt := lipgloss.NewStyle().Foreground(colFree).Padding(0, 1)
+	unsupSt := lipgloss.NewStyle().Foreground(colMuted).Padding(0, 1)
+	sepSt := lipgloss.NewStyle().Foreground(colBorder).Padding(0, 1)
+
+	t := table.New().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(colBorder).
-		Padding(0, 2).
-		Render(body)
+		BorderStyle(borderSt).
+		Headers("Resource", "Type", "Est. / mo").
+		Rows(tableRows...).
+		StyleFunc(func(rowIdx, col int) lipgloss.Style {
+			if rowIdx == table.HeaderRow {
+				return headerSt
+			}
+			if rowIdx == sepRowIdx {
+				return sepSt
+			}
+			if rowIdx == totalRowIdx {
+				if col == 2 {
+					return totalCostSt
+				}
+				return totalLabelSt
+			}
+			r := rows[rowIdx]
+			if r.isFree {
+				if col == 0 {
+					return nameSt
+				}
+				return freeSt
+			}
+			if r.isUnsup {
+				if col == 0 {
+					return nameSt
+				}
+				return unsupSt
+			}
+			switch col {
+			case 0:
+				return nameSt
+			case 1:
+				return typeSt
+			default:
+				return costSt
+			}
+		})
+
+	return t.Render()
 }
 
 // formatDecimal formats a decimal.Decimal for display, trimming trailing zeros

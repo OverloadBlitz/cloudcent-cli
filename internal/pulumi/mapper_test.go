@@ -364,9 +364,12 @@ func TestDecodeAPIGatewayV2APIAddsProtocolTypePricingAttr(t *testing.T) {
 				t.Fatalf("expected 1 decoded resource, got %d", len(decoded))
 			}
 
-			if got := decoded[0].Attrs["protocol_type"]; got != tt.expected {
-				t.Fatalf("protocol_type = %q, want %q", got, tt.expected)
+			// protocol_type must NOT be in attrs (it's not an AWS pricing attribute
+			// and would cause pricing lookups to return no results).
+			if got := decoded[0].Attrs["protocol_type"]; got != "" {
+				t.Fatalf("protocol_type should not be in attrs (breaks pricing query), got %q", got)
 			}
+			// protocol_type must be in props (for display purposes only).
 			if got := decoded[0].Props["protocol_type"]; got != tt.expected {
 				t.Fatalf("props protocol_type = %q, want %q", got, tt.expected)
 			}
