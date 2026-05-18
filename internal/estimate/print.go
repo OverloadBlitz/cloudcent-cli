@@ -637,12 +637,14 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 
 	// Build one row per result — billable, free, and unsupported all included.
 	type row struct {
-		nameCol string
-		typeCol string
-		costCol string
-		isFree  bool
-		isUnsup bool
-		isTotal bool
+		nameCol        string
+		typeCol        string
+		usageCol       string
+		costCol        string
+		isFree         bool
+		isUnsup        bool
+		isTotal        bool
+		isDefaultUsage bool
 	}
 	var rows []row
 
@@ -675,24 +677,39 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 
 		// Compute this resource's monthly cost.
 		var cost decimal.Decimal
+		var usageCol string
+		var isDefaultUsage bool
 		if r.IsUsageBased {
 			cost = r.UsageMonthly
+			qty := formatUsageQty(r.UsageQty)
+			unit := r.UsageUnit
+			if unit == "" {
+				unit = "units"
+			}
+			usageCol = qty + " " + unit + "/mo"
+			if r.UsageDefault {
+				usageCol += " (default)"
+				isDefaultUsage = true
+			}
 		} else {
 			cost = r.EffectiveRate.Mul(decimal.NewFromInt(hoursPerMonth))
 		}
 
 		rows = append(rows, row{
-			nameCol: name,
-			typeCol: pulumiType,
-			costCol: formatDecimal(cost, 2),
+			nameCol:        name,
+			typeCol:        pulumiType,
+			usageCol:       usageCol,
+			costCol:        formatDecimal(cost, 2),
+			isDefaultUsage: isDefaultUsage,
 		})
 	}
 
 	// Separator row + Total row.
 	rows = append(rows, row{
-		nameCol: "─",
-		typeCol: "─",
-		costCol: "─",
+		nameCol:  "─",
+		typeCol:  "─",
+		usageCol: "─",
+		costCol:  "─",
 	})
 	rows = append(rows, row{
 		nameCol: "Total Estimated Cost",
@@ -704,7 +721,7 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 	// Render using lipgloss table.
 	tableRows := make([][]string, len(rows))
 	for i, r := range rows {
-		tableRows[i] = []string{r.nameCol, r.typeCol, r.costCol}
+		tableRows[i] = []string{r.nameCol, r.typeCol, r.usageCol, r.costCol}
 	}
 
 	totalRowIdx := len(rows) - 1
@@ -713,11 +730,13 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 	freeSt := lipgloss.NewStyle().Foreground(colFree).Padding(0, 1)
 	unsupSt := lipgloss.NewStyle().Foreground(colMuted).Padding(0, 1)
 	sepSt := lipgloss.NewStyle().Foreground(colBorder).Padding(0, 1)
+	usageSt := lipgloss.NewStyle().Foreground(colMuted).Padding(0, 1)
+	usageDefaultSt := lipgloss.NewStyle().Foreground(colWarn).Padding(0, 1)
 
 	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(borderSt).
-		Headers("Resource", "Type", "Est. / mo").
+		Headers("Resource", "Type", "Usage", "Est. / mo").
 		Rows(tableRows...).
 		StyleFunc(func(rowIdx, col int) lipgloss.Style {
 			if rowIdx == table.HeaderRow {
@@ -727,7 +746,7 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 				return sepSt
 			}
 			if rowIdx == totalRowIdx {
-				if col == 2 {
+				if col == 3 {
 					return totalCostSt
 				}
 				return totalLabelSt
@@ -750,6 +769,11 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 				return nameSt
 			case 1:
 				return typeSt
+			case 2:
+				if r.isDefaultUsage {
+					return usageDefaultSt
+				}
+				return usageSt
 			default:
 				return costSt
 			}

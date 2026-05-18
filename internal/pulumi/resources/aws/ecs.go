@@ -1,10 +1,12 @@
 package aws
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/OverloadBlitz/cloudcent-cli/internal/pulumi/resources"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -191,42 +193,100 @@ func DecodeECSService(record resources.ResourceRecord, region, inputsJSON string
 //   - Memory query (memorytype=perGB)
 //
 // Additionally emits an OS License Fee query when the task runs Windows.
+//
+// HourlyQty is set on each entry so the estimator multiplies the unit price by
+// the correct number of vCPUs (or GB) × desiredCount rather than treating
+// every task as 1 vCPU / 1 GB.
 func decodeFargateService(
 	record resources.ResourceRecord,
 	region, inputsJSON, cpuArch, osFamily string,
 	props map[string]string,
 ) []resources.DecodedResource {
+	// Default to X86_64 when the task definition does not specify an arch.
+	// AWS Fargate defaults to X86_64, and the pricing API returns ARM64 prices
+	// when no cpuArchitecture filter is supplied, which would undercount costs.
+	if cpuArch == "" {
+		cpuArch = "X86_64"
+	}
+
 	cpuAttrs := map[string]string{
-		"cputype": "perCPU",
+		"cputype":         "perCPU",
+		"cpuArchitecture": cpuArch,
 	}
 	memAttrs := map[string]string{
-		"memorytype": "perGB",
+		"memorytype":      "perGB",
+		"cpuArchitecture": cpuArch,
 	}
 
-	// ARM64 tasks use a different pricing dimension.
-	if cpuArch != "" {
-		cpuAttrs["cpuArchitecture"] = cpuArch
-		memAttrs["cpuArchitecture"] = cpuArch
-	}
+	// Compute per-hour quantity multipliers from taskCpu / taskMemory / desiredCount.
+	// taskCpu is in millicpu (256 = 0.25 vCPU), taskMemory is in MiB (512 = 0.5 GB).
+	cpuQty := fargateVCPUs(props["taskCpu"])
+	memQty := fargateMemoryGB(props["taskMemory"])
+	count := fargateDesiredCount(record)
 
-	results := []resources.DecodedResource{
-		ecsEntry(record, region, inputsJSON, "CPU", "Compute", cpuAttrs, props),
-		ecsEntry(record, region, inputsJSON, "Memory", "Compute", memAttrs, props),
-	}
+	cpuHourlyQty := cpuQty.Mul(count)
+	memHourlyQty := memQty.Mul(count)
+
+	cpuEntry := ecsEntry(record, region, inputsJSON, "CPU", "Compute", cpuAttrs, props)
+	cpuEntry.HourlyQty = cpuHourlyQty
+	memEntry := ecsEntry(record, region, inputsJSON, "Memory", "Compute", memAttrs, props)
+	memEntry.HourlyQty = memHourlyQty
+
+	results := []resources.DecodedResource{cpuEntry, memEntry}
 
 	// Windows tasks incur an additional OS license fee.
 	if isWindowsOSFamily(osFamily) {
 		osAttrs := map[string]string{
 			"operatingSystem": "Windows",
 			"cputype":         "perCPU",
+			"cpuArchitecture": cpuArch,
 		}
-		if cpuArch != "" {
-			osAttrs["cpuArchitecture"] = cpuArch
-		}
-		results = append(results, ecsEntry(record, region, inputsJSON, "OS License Fee", "Compute", osAttrs, props))
+		osEntry := ecsEntry(record, region, inputsJSON, "OS License Fee", "Compute", osAttrs, props)
+		osEntry.HourlyQty = cpuHourlyQty
+		results = append(results, osEntry)
 	}
 
 	return results
+}
+
+// fargateVCPUs converts a Fargate CPU string (millicpu, e.g. "256") to vCPUs.
+// Returns 1 when the value is missing or unparseable so costs are never zero.
+func fargateVCPUs(taskCPU string) decimal.Decimal {
+	if taskCPU == "" {
+		return decimal.NewFromInt(1)
+	}
+	v, err := strconv.ParseFloat(strings.TrimSpace(taskCPU), 64)
+	if err != nil || v <= 0 {
+		return decimal.NewFromInt(1)
+	}
+	return decimal.NewFromFloat(v / 1024)
+}
+
+// fargateMemoryGB converts a Fargate memory string (MiB, e.g. "512") to GB.
+// Returns 1 when the value is missing or unparseable.
+func fargateMemoryGB(taskMemory string) decimal.Decimal {
+	if taskMemory == "" {
+		return decimal.NewFromInt(1)
+	}
+	v, err := strconv.ParseFloat(strings.TrimSpace(taskMemory), 64)
+	if err != nil || v <= 0 {
+		return decimal.NewFromInt(1)
+	}
+	return decimal.NewFromFloat(v / 1024)
+}
+
+// fargateDesiredCount reads the desiredCount input from the ECS Service record.
+// Returns 1 when not set or unparseable.
+func fargateDesiredCount(record resources.ResourceRecord) decimal.Decimal {
+	raw := ExtractInput(record.Inputs, "desiredCount")
+	if raw == "" {
+		return decimal.NewFromInt(1)
+	}
+	v, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || v <= 0 {
+		return decimal.NewFromInt(1)
+	}
+	return decimal.NewFromFloat(v)
 }
 
 // decodeExternalService produces a pricing query for an EXTERNAL-launched service.

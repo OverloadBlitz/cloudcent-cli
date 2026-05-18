@@ -26,7 +26,7 @@
       "props": {
         "type": "aws:lb/targetGroup:TargetGroup"
       },
-      "status": "Sorry, not supported yet"
+      "status": "free resource"
     },
     {
       "name": "task-exec-policy",
@@ -44,17 +44,26 @@
     },
     {
       "name": "app-lb",
+      "sub_label": "Hourly",
       "props": {
         "type": "aws:lb/loadBalancer:LoadBalancer"
       },
-      "status": "Sorry, not supported yet"
+      "on_demand_rate": "0.008"
+    },
+    {
+      "name": "app-lb",
+      "sub_label": "LCU",
+      "props": {
+        "type": "aws:lb/loadBalancer:LoadBalancer"
+      },
+      "on_demand_rate": "0.008"
     },
     {
       "name": "web",
       "props": {
         "type": "aws:lb/listener:Listener"
       },
-      "status": "Sorry, not supported yet"
+      "status": "free resource"
     },
     {
       "name": "app-svc",

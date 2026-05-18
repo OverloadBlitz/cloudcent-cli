@@ -5,6 +5,23 @@
 
 ![banner](/docs/cloudcent-banner.png)
 
+- [Installation](#installation)
+  - [npx](#run-instantly-with-npx)
+  - [npm](#install-globally-with-npm)
+  - [Shell script (macOS / Linux)](#shell-script-macos--linux)
+  - [PowerShell (Windows)](#powershell-windows)
+- [Quick Start](#quick-start)
+- [Examples](#example)
+  - [Draw.io](#drawio)
+  - [Pulumi](#pulumi)
+- [Supported Cloud Resources](#supported-cloud-resources)
+- [CLI Commands](#cli-commands)
+- [Configuration](#configuration)
+- [Integration Tests](#integration-tests)
+- [Contributing](#contributing)
+- [Reporting Issues](#reporting-issues)
+- [License](#license)
+
 ## Installation
 
 ### Run instantly with npx
@@ -71,12 +88,12 @@ cloudcent pulumi estimate
 
 ## Supported Cloud Resources
 
-| Provider | Services                                                      | Pricing Model | Data Source |
-|----------|---------------------------------------------------------------|---------------|-------------|
+| Provider | Services                                               | Pricing Model | Data Source |
+|----------|--------------------------------------------------------|---------------|-------------|
 | AWS | EC2, EBS, ECS, S3, ApiGateway, AppSync, DynamoDB, Lambda, SNS | OnDemand, Reserved, SavingPlan, Spot | AWS Pricing API |
-| Azure | WIP                                                           | OnDemand, Reserved, SavingPlan (with/without Azure Hybrid Benefit) | Azure Pricing Calculator |
-| GCP | WIP                                                           | OnDemand, CommittedUseDiscount, Preemptible | GCP Pricing SDK v1 |
-| OCI | WIP                                                           | OnDemand (PAYG) | OCI Cost Estimator |
+| Azure | Virtual Machines                                                       | OnDemand, Reserved, SavingPlan (with/without Azure Hybrid Benefit) | Azure Pricing Calculator |
+| GCP | Compute Engine                                         | OnDemand, CommittedUseDiscount, Preemptible | GCP Pricing SDK v1 |
+| OCI | WIP                                                    | OnDemand (PAYG) | OCI Cost Estimator |
 
 ## CLI Commands
 
@@ -121,9 +138,10 @@ The `run-tests.sh` script is for comparing the CLI output against the saved snap
 
 ## Contributing
 
-1. Create a issue first if you want to change or fix anything
-2. Feel free to use AI but need to pass integration tests before raising prs
-3. Rebase against main branch and squash the commits before merging
+1. Please create an issue first if you want to propose a change or fix.
+2. I usually don’t create PRs in this repo. I use a separate private repo for creating, reviewing, and merging PRs, but feel free to open PRs here.
+3. Feel free to use AI but need to pass integration tests before raising prs
+4. Rebase against main branch and squash the commits before merging
 
 ## Reporting Issues
 

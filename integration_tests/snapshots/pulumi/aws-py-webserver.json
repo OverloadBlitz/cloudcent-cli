@@ -235,9 +235,6 @@
     }
   ],
   "totals": {
-    "hourly_rate": "0.0116",
-    "monthly_hourly": "8.468",
-    "monthly_total": "8.468",
-    "monthly_usage": "0"
+    "monthly_total": "8.468"
   }
 }

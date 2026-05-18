@@ -18,7 +18,6 @@ PULUMI_WHITELIST=(
   aws-py-s3-folder
   aws-py-apigatewayv2-http-api-quickcreate
   aws-py-resources
-  aws-py-stackreference
   aws-py-voting-app
 )
 
@@ -175,18 +174,18 @@ run_pulumi_test() {
     # name, sub_label, status presence, and is_usage_based.
     if [[ -n "$res_sub_label" ]]; then
       res_label="${res_name}/${res_sub_label}"
-      actual_selector=".resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"$res_sub_label\") | first"
+      actual_selector="first(.resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"$res_sub_label\"))"
     elif [[ -n "$snap_status" ]]; then
       # Status resource: match by name + same status value to disambiguate duplicates.
       res_label="$res_name"
-      actual_selector=".resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"\" and (.status // \"\") == \"$snap_status\") | first"
+      actual_selector="first(.resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"\" and (.status // \"\") == \"$snap_status\"))"
     elif [[ "$snap_is_usage" == "true" ]]; then
       # Usage-based resource with no sub_label: match by name + is_usage_based.
       res_label="$res_name"
-      actual_selector=".resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"\" and (.is_usage_based // false) == true) | first"
+      actual_selector="first(.resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"\" and (.is_usage_based // false) == true))"
     else
       res_label="$res_name"
-      actual_selector=".resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"\") | first"
+      actual_selector="first(.resources[] | select(.name == \"$res_name\" and (.sub_label // \"\") == \"\"))"
     fi
 
     actual_status=$(echo "$actual_json" | jq -r "$actual_selector | .status // \"\"")

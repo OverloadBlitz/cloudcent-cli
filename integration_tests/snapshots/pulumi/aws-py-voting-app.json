@@ -43,12 +43,12 @@
     {
       "name": "redis-targetgroup",
       "props": { "type": "aws:lb/targetGroup:TargetGroup" },
-      "status": "Sorry, not supported yet"
+      "status": "free resource"
     },
     {
       "name": "flask-targetgroup",
       "props": { "type": "aws:lb/targetGroup:TargetGroup" },
-      "status": "Sorry, not supported yet"
+      "status": "free resource"
     },
     {
       "name": "redis-task-definition",
@@ -77,13 +77,27 @@
     },
     {
       "name": "redis-balancer",
+      "sub_label": "Hourly",
       "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
-      "status": "Sorry, not supported yet"
+      "on_demand_rate": "0.008"
+    },
+    {
+      "name": "redis-balancer",
+      "sub_label": "LCU",
+      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "on_demand_rate": "0.008"
     },
     {
       "name": "flask-balancer",
+      "sub_label": "Hourly",
       "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
-      "status": "Sorry, not supported yet"
+      "on_demand_rate": "0.008"
+    },
+    {
+      "name": "flask-balancer",
+      "sub_label": "LCU",
+      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "on_demand_rate": "0.008"
     },
     {
       "name": "app-routetable",
@@ -93,7 +107,7 @@
     {
       "name": "redis-listener",
       "props": { "type": "aws:lb/listener:Listener" },
-      "status": "Sorry, not supported yet"
+      "status": "free resource"
     },
     {
       "name": "app_routetable_association",
@@ -103,7 +117,7 @@
     {
       "name": "flask-listener",
       "props": { "type": "aws:lb/listener:Listener" },
-      "status": "Sorry, not supported yet"
+      "status": "free resource"
     },
     {
       "name": "flask-task-definition",

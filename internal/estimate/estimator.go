@@ -336,9 +336,13 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 				}
 			}
 		}
-
-		// Detect whether this resource is usage-based (unit != Hrs).
 		isUsage, usageUnit := detectUsageBased(entries)
+
+		// Apply per-hour quantity multiplier when set
+		if record.HourlyQty.IsPositive() {
+			effectiveRate = effectiveRate.Mul(record.HourlyQty)
+			onDemand = onDemand.Mul(record.HourlyQty)
+		}
 
 		est := resources.EstimateResult{
 			ResourceName:   record.Name,

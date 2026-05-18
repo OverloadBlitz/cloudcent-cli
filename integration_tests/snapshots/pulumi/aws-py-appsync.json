@@ -81,7 +81,7 @@
         "type": "aws:dynamodb/table:Table"
       },
       "is_usage_based": true,
-      "usage_monthly": "0"
+      "usage_monthly": "25"
     },
     {
       "name": "key",

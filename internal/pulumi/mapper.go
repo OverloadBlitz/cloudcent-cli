@@ -121,6 +121,12 @@ func decodeFromMapping(record resources.ResourceRecord, mapping api.PulumiResour
 
 	// Resources that produce multiple pricing queries (1:N).
 	switch t {
+	case "aws:appsync/graphQLApi:GraphQLApi":
+		return awsdecode.DecodeGraphQLApi(record, region, inputsJSON)
+	case "aws:appsync/apiCache:ApiCache":
+		return awsdecode.DecodeApiCache(record, region, inputsJSON)
+	case "aws:appsync/api:Api":
+		return awsdecode.DecodeAppSyncApi(record, region, inputsJSON)
 	case "aws:ecs/service:Service":
 		return awsdecode.DecodeECSService(record, region, inputsJSON)
 	case "aws:ecs/capacityProvider:CapacityProvider":
@@ -163,6 +169,10 @@ func decodeFromMapping(record resources.ResourceRecord, mapping api.PulumiResour
 		return awsdecode.DecodeS3VectorBucket(record, region, inputsJSON)
 	case "aws:ebs/volume:Volume":
 		return awsdecode.DecodeEBSVolume(record, region, inputsJSON)
+	case "aws:lb/loadBalancer:LoadBalancer", "aws:alb/loadBalancer:LoadBalancer":
+		return awsdecode.DecodeLBLoadBalancer(record, region, inputsJSON)
+	case "aws:elb/loadBalancer:LoadBalancer":
+		return awsdecode.DecodeClassicELB(record, region, inputsJSON)
 	}
 
 	// Single-resource path: apply any derived attrs then return.

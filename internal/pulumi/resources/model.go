@@ -24,9 +24,10 @@ type DecodedResource struct {
 	Props          map[string]string // display properties (instance type, region, etc.)
 	InputsJSON     string            // formatted Pulumi input properties for debugging/inspection
 	PriceFilter    string
-	NoPricing      bool // true for resources that don't have pricing (e.g. security groups)
-	IsFreeType     bool // true when the resource type is in the metadata free_types list
-	RegionFallback bool // true when region was not detected and us-east-1 was used as default
+	NoPricing      bool            // true for resources that don't have pricing (e.g. security groups)
+	IsFreeType     bool            // true when the resource type is in the metadata free_types list
+	RegionFallback bool            // true when region was not detected and us-east-1 was used as default
+	HourlyQty      decimal.Decimal // quantity multiplier applied to the hourly rate (e.g. vCPU count × task count)
 }
 
 // PriceEntry is one pricing option for a resource.
