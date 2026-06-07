@@ -20,45 +20,51 @@
       "sub_label": "Storage",
       "props": { "type": "aws:s3/bucket:Bucket" },
       "is_usage_based": true,
-      "usage_monthly": "2.3"
+      "unit_rate": "0.0230000000",
+      "cost_monthly": "0.575"
     },
     {
       "name": "s3-website-bucket",
       "sub_label": "Requests-PUT",
       "props": { "type": "aws:s3/bucket:Bucket" },
       "is_usage_based": true,
-      "usage_monthly": "0.05"
+      "unit_rate": "0.000005",
+      "cost_monthly": "0.05"
     },
     {
       "name": "s3-website-bucket",
       "sub_label": "Requests-GET",
       "props": { "type": "aws:s3/bucket:Bucket" },
       "is_usage_based": true,
-      "usage_monthly": "0.04"
+      "unit_rate": "0.0000004",
+      "cost_monthly": "0.04"
     },
     {
       "name": "index.html",
       "sub_label": "Storage",
       "props": { "type": "aws:s3/bucketObject:BucketObject" },
       "is_usage_based": true,
-      "usage_monthly": "2.3"
+      "unit_rate": "0.0230000000",
+      "cost_monthly": "0.575"
     },
     {
       "name": "favicon.png",
       "sub_label": "Storage",
       "props": { "type": "aws:s3/bucketObject:BucketObject" },
       "is_usage_based": true,
-      "usage_monthly": "2.3"
+      "unit_rate": "0.0230000000",
+      "cost_monthly": "0.575"
     },
     {
       "name": "python.png",
       "sub_label": "Storage",
       "props": { "type": "aws:s3/bucketObject:BucketObject" },
       "is_usage_based": true,
-      "usage_monthly": "2.3"
+      "unit_rate": "0.0230000000",
+      "cost_monthly": "0.575"
     }
   ],
   "totals": {
-    "monthly_total": "9.29"
+    "monthly_total": "2.39"
   }
 }

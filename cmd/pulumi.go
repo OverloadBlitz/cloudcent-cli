@@ -290,10 +290,15 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 		if strings.TrimSpace(pulumiEstimatePriceFilter) != "" {
 			decodedResources[i].PriceFilter = strings.TrimSpace(pulumiEstimatePriceFilter)
 		}
-		// Apply region fallback: if no region was detected, use us-east-1 and flag it.
+		// Apply region fallback: if no region was detected, use a provider-appropriate
+		// default and flag it.
 		// Skip free/no-pricing resources — they don't need region for pricing.
 		if !decodedResources[i].NoPricing && strings.TrimSpace(decodedResources[i].Region) == "" {
-			decodedResources[i].Region = "us-east-1"
+			fallbackRegion := "us-east-1"
+			if decodedResources[i].Provider == "azure" {
+				fallbackRegion = "us-east"
+			}
+			decodedResources[i].Region = fallbackRegion
 			decodedResources[i].RegionFallback = true
 		}
 	}
@@ -587,7 +592,45 @@ func runUserProgramTo(projectInfo pulumiProjectInfo, dir, monitorAddr, engineAdd
 		// `import iam` from a sibling iam.py) can be resolved.
 		env = prependPythonPath(env, dir)
 	case "dotnet":
-		c = exec.Command("dotnet", "run")
+		// pulumi-language-dotnet is the official .NET language host. It calls
+		// pulumi.runtime.configure() before running user code, wiring up the
+		// monitor/engine gRPC stubs. Running `dotnet run` directly skips this
+		// and leaves the monitor unset, causing resource registration to fail.
+		dotnetLangHost, err := exec.LookPath("pulumi-language-dotnet")
+		if err != nil {
+			return fmt.Errorf("pulumi-language-dotnet not found on PATH — is the Pulumi CLI installed?")
+		}
+		c = exec.Command(dotnetLangHost,
+			"--monitor", monitorAddr,
+			"--engine", engineAddr,
+			"--project", projectInfo.Name,
+			"--stack", projectInfo.Stack,
+			"--parallel", "1",
+			"--dry-run", "true",
+			"--organization", "cloudcent",
+			"--pwd", dir,
+		)
+	case "java":
+		// The Java SDK reads monitor/engine addresses from environment variables
+		// (PULUMI_MONITOR, PULUMI_ENGINE, etc.) — the same pattern as Go.
+		// We detect whether the project uses Maven (pom.xml) or Gradle (build.gradle).
+		if fileExists(filepath.Join(dir, "pom.xml")) {
+			c = exec.Command("mvn", "-q", "compile", "exec:java")
+		} else if fileExists(filepath.Join(dir, "build.gradle")) || fileExists(filepath.Join(dir, "build.gradle.kts")) {
+			c = exec.Command("gradle", "-q", "run")
+		} else {
+			return fmt.Errorf("java runtime: no pom.xml or build.gradle found in %s", dir)
+		}
+	case "yaml":
+		// pulumi-language-yaml is the YAML language host. Unlike other runtimes,
+		// it is a gRPC server that evaluates the YAML template itself and registers
+		// resources directly — there is no user subprocess to launch.
+		// We invoke it in "run" mode by passing the engine address as a positional arg.
+		yamlLangHost, err := exec.LookPath("pulumi-language-yaml")
+		if err != nil {
+			return fmt.Errorf("pulumi-language-yaml not found on PATH — is the Pulumi CLI installed?")
+		}
+		c = exec.Command(yamlLangHost, engineAddr)
 	default:
 		return fmt.Errorf("unsupported runtime %q", projectInfo.Runtime)
 	}
@@ -699,6 +742,23 @@ func checkDependencies(runtime, dir, venv string) (needed bool, desc string) {
 			return true, ".NET packages (dotnet restore)"
 		}
 		return false, ""
+
+	case "java":
+		if fileExists(filepath.Join(dir, "pom.xml")) {
+			// Check if Maven has already downloaded dependencies (local .m2 or target/classes).
+			if _, err := os.Stat(filepath.Join(dir, "target", "classes")); os.IsNotExist(err) {
+				return true, "Java dependencies (mvn compile)"
+			}
+		} else if fileExists(filepath.Join(dir, "build.gradle")) || fileExists(filepath.Join(dir, "build.gradle.kts")) {
+			if _, err := os.Stat(filepath.Join(dir, "build", "classes")); os.IsNotExist(err) {
+				return true, "Java dependencies (gradle classes)"
+			}
+		}
+		return false, ""
+
+	case "yaml":
+		// YAML projects have no dependencies to install.
+		return false, ""
 	}
 	return false, ""
 }
@@ -737,6 +797,28 @@ func ensureDependenciesTo(runtime, dir, venv string, w io.Writer) error {
 		c.Stdout = w
 		c.Stderr = os.Stderr
 		return c.Run()
+
+	case "java":
+		if fileExists(filepath.Join(dir, "pom.xml")) {
+			fmt.Fprintln(w, "Compiling Java project with Maven…")
+			c := exec.Command("mvn", "-q", "compile")
+			c.Dir = dir
+			c.Stdout = w
+			c.Stderr = os.Stderr
+			return c.Run()
+		} else if fileExists(filepath.Join(dir, "build.gradle")) || fileExists(filepath.Join(dir, "build.gradle.kts")) {
+			fmt.Fprintln(w, "Compiling Java project with Gradle…")
+			c := exec.Command("gradle", "-q", "classes")
+			c.Dir = dir
+			c.Stdout = w
+			c.Stderr = os.Stderr
+			return c.Run()
+		}
+		return fmt.Errorf("java runtime: no pom.xml or build.gradle found in %s", dir)
+
+	case "yaml":
+		// No dependencies to install for YAML projects.
+		return nil
 	}
 	return nil
 }
@@ -1100,8 +1182,13 @@ func scanRequiredConfigKeys(dir, projectName, runtime string) []string {
 		globs = []string{"*.go"}
 	case "dotnet":
 		globs = []string{"*.cs", "*.fs"}
+	case "java":
+		globs = []string{"*.java"}
+	case "yaml":
+		// YAML projects declare resources declaratively; no config.require() calls to scan.
+		return nil
 	default:
-		globs = []string{"*.py", "*.ts", "*.js", "*.go", "*.cs"}
+		globs = []string{"*.py", "*.ts", "*.js", "*.go", "*.cs", "*.java"}
 	}
 
 	seen := map[string]bool{}

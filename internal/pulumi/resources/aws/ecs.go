@@ -11,7 +11,7 @@ import (
 
 const (
 	ecsProvider    = "aws"
-	ecsService     = "Compute"
+	ecsService     = ""
 	ecsServiceCode = "AmazonECS"
 )
 
@@ -210,12 +210,10 @@ func decodeFargateService(
 	}
 
 	cpuAttrs := map[string]string{
-		"cputype":         "perCPU",
-		"cpuArchitecture": cpuArch,
+		"cputype": "perCPU",
 	}
 	memAttrs := map[string]string{
-		"memorytype":      "perGB",
-		"cpuArchitecture": cpuArch,
+		"memorytype": "perGB",
 	}
 
 	// Compute per-hour quantity multipliers from taskCpu / taskMemory / desiredCount.

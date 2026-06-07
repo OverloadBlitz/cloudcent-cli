@@ -1,0 +1,41 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true  # shallow clone (depth=1) per .gitmodules
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Pulumi CLI
+        run: |
+          curl -fsSL https://get.pulumi.com | sh
+          echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
+
+      - name: Install uv (fast Python package manager)
+        run: pip install uv
+
+      - name: Build cloudcent binary
+        run: go build -o cloudcent-ci ./main.go
+
+      - name: Download pricing metadata
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+        run: ./cloudcent-ci metadata refresh
+
+      - name: Run integration tests
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+        run: bash integration_tests/run-tests.sh --binary ./cloudcent-ci

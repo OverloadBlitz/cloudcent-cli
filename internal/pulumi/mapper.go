@@ -7,6 +7,7 @@ import (
 	"github.com/OverloadBlitz/cloudcent-cli/internal/api"
 	"github.com/OverloadBlitz/cloudcent-cli/internal/pulumi/resources"
 	awsdecode "github.com/OverloadBlitz/cloudcent-cli/internal/pulumi/resources/aws"
+	azuredecode "github.com/OverloadBlitz/cloudcent-cli/internal/pulumi/resources/azure"
 )
 
 // skipTypes are internal Pulumi resource types that are never user-visible resources.
@@ -173,6 +174,8 @@ func decodeFromMapping(record resources.ResourceRecord, mapping api.PulumiResour
 		return awsdecode.DecodeLBLoadBalancer(record, region, inputsJSON)
 	case "aws:elb/loadBalancer:LoadBalancer":
 		return awsdecode.DecodeClassicELB(record, region, inputsJSON)
+	case "azure-native:compute:VirtualMachine":
+		return azuredecode.DecodeVirtualMachine(record, region, inputsJSON)
 	}
 
 	// Single-resource path: apply any derived attrs then return.

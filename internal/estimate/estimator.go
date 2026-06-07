@@ -91,6 +91,9 @@ var hourlyUnits = map[string]bool{
 	"hours": true,
 	"hour":  true,
 	"hr":    true,
+	// DynamoDB provisioned capacity — treated as hourly so HourlyQty scales the rate by RCU/WCU count.
+	"readcapacityunit-hrs":  true,
+	"writecapacityunit-hrs": true,
 }
 
 // isHourlyUnit returns true when the unit string represents time-based pricing.
@@ -222,6 +225,7 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 				SubLabel:       record.SubLabel,
 				RawType:        record.RawType,
 				Product:        record.RawType,
+				Region:         record.Region,
 				Props:          record.Props,
 				InputsJSON:     record.InputsJSON,
 				StatusMsg:      statusMsg,
@@ -263,6 +267,7 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 				SubLabel:       record.SubLabel,
 				RawType:        record.RawType,
 				Product:        displayProduct(record.Provider, record.Service),
+				Region:         record.Region,
 				Props:          record.Props,
 				InputsJSON:     record.InputsJSON,
 				StatusMsg:      "Sorry, not supported yet",
@@ -278,6 +283,7 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 				SubLabel:       record.SubLabel,
 				RawType:        record.RawType,
 				Product:        displayProduct(record.Provider, record.Service),
+				Region:         record.Region,
 				Props:          record.Props,
 				InputsJSON:     record.InputsJSON,
 				StatusMsg:      "Sorry, not supported yet",
@@ -296,6 +302,7 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 				SubLabel:       record.SubLabel,
 				RawType:        record.RawType,
 				Product:        displayProduct(item.Provider, item.Product),
+				Region:         record.Region,
 				Props:          record.Props,
 				InputsJSON:     record.InputsJSON,
 				StatusMsg:      "free resource",
@@ -349,6 +356,7 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 			SubLabel:       record.SubLabel,
 			RawType:        record.RawType,
 			Product:        displayProduct(item.Provider, item.Product),
+			Region:         record.Region,
 			Props:          record.Props,
 			InputsJSON:     record.InputsJSON,
 			Prices:         entries,

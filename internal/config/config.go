@@ -37,7 +37,15 @@ func Path() (string, error) {
 }
 
 // Load reads ~/.cloudcent/config.yaml. Returns nil, nil if missing.
+// If the CLOUDCENT_API_KEY environment variable is set, it takes precedence
+// over the config file (useful for CI environments).
 func Load() (*Config, error) {
+	// Environment variable takes precedence — no file needed in CI.
+	if apiKey := os.Getenv("CLOUDCENT_API_KEY"); apiKey != "" {
+		cliID := os.Getenv("CLOUDCENT_CLI_ID") // optional
+		return &Config{CliID: cliID, APIKey: &apiKey}, nil
+	}
+
 	p, err := Path()
 	if err != nil {
 		return nil, err

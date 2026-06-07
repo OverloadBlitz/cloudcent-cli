@@ -2,6 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-0.0.3--beta-orange)
+![Integration Tests](https://github.com/OverloadBlitz/CloudCent-CLI/actions/workflows/integration-tests.yml/badge.svg)
 
 ![banner](/docs/cloudcent-banner.png)
 
@@ -134,6 +135,8 @@ These test cases are located under:
 Under the `/integration_tests/snapshots` directory, I store the expected total pricing results, which were manually adjusted based on the official cloud cost estimators.
 
 The `run-tests.sh` script is for comparing the CLI output against the saved snapshots.
+
+I am still working on adjusting and fixing test cases
 
 
 ## Contributing

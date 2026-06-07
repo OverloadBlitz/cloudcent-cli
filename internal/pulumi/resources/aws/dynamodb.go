@@ -1,10 +1,12 @@
 package aws
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/OverloadBlitz/cloudcent-cli/internal/pulumi/resources"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -40,6 +42,26 @@ func tableClass(record resources.ResourceRecord) string {
 	return "STANDARD"
 }
 
+// provisionedReadCapacity returns the readCapacity value from inputs, defaulting to 1.
+func provisionedReadCapacity(record resources.ResourceRecord) decimal.Decimal {
+	if v := ExtractInput(record.Inputs, "readCapacity"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
+			return decimal.NewFromFloat(f)
+		}
+	}
+	return decimal.NewFromInt(1)
+}
+
+// provisionedWriteCapacity returns the writeCapacity value from inputs, defaulting to 1.
+func provisionedWriteCapacity(record resources.ResourceRecord) decimal.Decimal {
+	if v := ExtractInput(record.Inputs, "writeCapacity"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
+			return decimal.NewFromFloat(f)
+		}
+	}
+	return decimal.NewFromInt(1)
+}
+
 // billingMode returns "PROVISIONED" or "PAY_PER_REQUEST" from inputs, defaulting to PROVISIONED.
 func billingMode(record resources.ResourceRecord) string {
 	bm := strings.ToUpper(ExtractInput(record.Inputs, "billingMode"))
@@ -70,12 +92,17 @@ func throughputQueries(record resources.ResourceRecord, region, inputsJSON strin
 		productFamily = "Provisioned IOPS"
 	}
 
-	return []resources.DecodedResource{
-		ddbEntry(record, region, inputsJSON, "Read Capacity", productFamily,
-			map[string]string{"group": readGroup, "operation": operation}, props),
-		ddbEntry(record, region, inputsJSON, "Write Capacity", productFamily,
-			map[string]string{"group": writeGroup, "operation": operation}, props),
+	read := ddbEntry(record, region, inputsJSON, "Read Capacity", productFamily,
+		map[string]string{"group": readGroup, "operation": operation}, props)
+	write := ddbEntry(record, region, inputsJSON, "Write Capacity", productFamily,
+		map[string]string{"group": writeGroup, "operation": operation}, props)
+
+	if !isPAY {
+		read.HourlyQty = provisionedReadCapacity(record)
+		write.HourlyQty = provisionedWriteCapacity(record)
 	}
+
+	return []resources.DecodedResource{read, write}
 }
 
 // extractReplicas returns the list of regionName values from the replicas[] array input.
@@ -111,6 +138,14 @@ func DecodeTable(record resources.ResourceRecord, region, inputsJSON string) []r
 	}
 	if v := ExtractInput(record.Inputs, "name"); v != "" {
 		props["name"] = v
+	}
+	if !isPAY {
+		if v := ExtractInput(record.Inputs, "readCapacity"); v != "" {
+			props["readCapacity"] = v
+		}
+		if v := ExtractInput(record.Inputs, "writeCapacity"); v != "" {
+			props["writeCapacity"] = v
+		}
 	}
 
 	var results []resources.DecodedResource
@@ -197,6 +232,14 @@ func DecodeGSI(record resources.ResourceRecord, region, inputsJSON string) []res
 	}
 	if v := ExtractInput(record.Inputs, "name"); v != "" {
 		props["name"] = v
+	}
+	if !isPAY {
+		if v := ExtractInput(record.Inputs, "readCapacity"); v != "" {
+			props["readCapacity"] = v
+		}
+		if v := ExtractInput(record.Inputs, "writeCapacity"); v != "" {
+			props["writeCapacity"] = v
+		}
 	}
 
 	return throughputQueries(record, region, inputsJSON, isPAY, isIA, props)

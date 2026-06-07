@@ -105,19 +105,22 @@
       "sub_label": "Requests",
       "props": { "type": "aws:sns/topic:Topic" },
       "is_usage_based": true,
-      "usage_monthly": "0"
+      "unit_rate": "0.0000000000",
+      "cost_monthly": "0"
     },
     {
       "name": "myeventrule",
       "props": { "type": "aws:cloudwatch/eventRule:EventRule" },
       "is_usage_based": true,
-      "usage_monthly": "0"
+      "unit_rate": "0.0000000000",
+      "cost_monthly": "0"
     },
     {
       "name": "mymetricalarm",
       "props": { "type": "aws:cloudwatch/metricAlarm:MetricAlarm" },
       "is_usage_based": true,
-      "usage_monthly": "0.1"
+      "unit_rate": "0.1",
+      "cost_monthly": "0.1"
     },
     {
       "name": "myeip",
@@ -129,28 +132,32 @@
       "sub_label": "Read Capacity",
       "props": { "type": "aws:dynamodb/table:Table" },
       "is_usage_based": true,
-      "usage_monthly": "127.582"
+      "unit_rate": "0.0000000000",
+      "cost_monthly": "127.582"
     },
     {
       "name": "mytable",
       "sub_label": "Write Capacity",
       "props": { "type": "aws:dynamodb/table:Table" },
       "is_usage_based": true,
-      "usage_monthly": "637.91"
+      "unit_rate": "0.0000000000",
+      "cost_monthly": "637.91"
     },
     {
       "name": "mytable",
       "sub_label": "Storage",
       "props": { "type": "aws:dynamodb/table:Table" },
       "is_usage_based": true,
-      "usage_monthly": "0"
+      "unit_rate": "0.0000000000",
+      "cost_monthly": "0"
     },
     {
       "name": "mytopic",
       "sub_label": "Requests",
       "props": { "type": "aws:sns/topic:Topic" },
       "is_usage_based": true,
-      "usage_monthly": "0"
+      "unit_rate": "0.0000000000",
+      "cost_monthly": "0"
     },
     {
       "name": "mytopicsubscription",

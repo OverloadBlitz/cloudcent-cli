@@ -45,10 +45,11 @@ type JSONResource struct {
 	Status         string            `json:"status,omitempty"`
 	// Usage-based fields
 	IsUsageBased bool    `json:"is_usage_based,omitempty"`
+	UnitRate     string  `json:"unit_rate,omitempty"`
 	UsageUnit    string  `json:"usage_unit,omitempty"`
 	UsageQty     float64 `json:"usage_qty,omitempty"`
 	UsageDefault bool    `json:"usage_default,omitempty"`
-	UsageMonthly string  `json:"usage_monthly,omitempty"`
+	UsageMonthly string  `json:"cost_monthly,omitempty"`
 }
 
 // JSONTotals holds the cost summary for JSON output.
@@ -125,6 +126,19 @@ func PrintResultsJSON(results []resources.EstimateResult) {
 			jr.Prices = append(jr.Prices, jp)
 		}
 
+		if jr.IsUsageBased {
+			for _, jp := range jr.Prices {
+				if jp.IsCurrent {
+					if len(jp.Tiers) > 0 {
+						jr.UnitRate = jp.Tiers[0].Price
+					} else {
+						jr.UnitRate = jp.RatePerHr
+					}
+					break
+				}
+			}
+		}
+
 		jsonResources = append(jsonResources, jr)
 	}
 
@@ -196,6 +210,7 @@ func PrintResults(results []resources.EstimateResult) {
 	subLabelSt := lipgloss.NewStyle().Foreground(colHeader).Bold(true)
 
 	var regionFallbackNames []string
+	regionFallbackProviders := map[string]bool{}
 
 	groups := groupResults(results)
 
@@ -228,7 +243,19 @@ func PrintResults(results []resources.EstimateResult) {
 
 		if first.RegionFallback {
 			regionFallbackNames = append(regionFallbackNames, first.ResourceName)
-			fmt.Printf("    %s\n", warnSt.Render("⚠ Region not detected — using us-east-1 as default"))
+			// Infer provider from resource type string.
+			rawType := first.Props["type"]
+			switch {
+			case strings.HasPrefix(rawType, "azure-native:") || strings.HasPrefix(rawType, "azure:"):
+				regionFallbackProviders["azure"] = true
+			case strings.HasPrefix(rawType, "gcp:"):
+				regionFallbackProviders["gcp"] = true
+			case strings.HasPrefix(rawType, "oci:"):
+				regionFallbackProviders["oci"] = true
+			default:
+				regionFallbackProviders["aws"] = true
+			}
+			fmt.Printf("    %s\n", warnSt.Render(fmt.Sprintf("⚠ Region not detected — using %q as fallback", first.Region)))
 		}
 
 		for _, r := range g.results {
@@ -319,13 +346,24 @@ func PrintResults(results []resources.EstimateResult) {
 	if len(regionFallbackNames) > 0 {
 		fmt.Println()
 		fmt.Println(warnSt.Render(" Region fallback notice"))
-		fmt.Println(mutedSt.Render("  The following resources had no region detected and were priced using us-east-1:"))
+		fmt.Println(mutedSt.Render("  The following resources had no region detected and were priced using a default region:"))
 		for _, name := range regionFallbackNames {
 			fmt.Printf("    • %s\n", name)
 		}
 		fmt.Println()
 		fmt.Println(mutedSt.Render("  To set a region, use one of:"))
-		fmt.Println(mutedSt.Render("    CLI flag:             cloudcent pulumi estimate --config aws:region=us-west-2"))
+		if regionFallbackProviders["aws"] {
+			fmt.Println(mutedSt.Render("    AWS:                  cloudcent pulumi estimate --config aws:region=us-west-2"))
+		}
+		if regionFallbackProviders["azure"] {
+			fmt.Println(mutedSt.Render("    Azure:                cloudcent pulumi estimate --config azure-native:location=eastus"))
+		}
+		if regionFallbackProviders["gcp"] {
+			fmt.Println(mutedSt.Render("    GCP:                  cloudcent pulumi estimate --config gcp:region=us-central1"))
+		}
+		if regionFallbackProviders["oci"] {
+			fmt.Println(mutedSt.Render("    OCI:                  cloudcent pulumi estimate --config oci:region=us-ashburn-1"))
+		}
 	}
 
 	fmt.Println()
@@ -639,6 +677,8 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 	type row struct {
 		nameCol        string
 		typeCol        string
+		unitPriceCol   string
+		hrsPerMoCol    string
 		usageCol       string
 		costCol        string
 		isFree         bool
@@ -678,6 +718,8 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 		// Compute this resource's monthly cost.
 		var cost decimal.Decimal
 		var usageCol string
+		var unitPriceCol string
+		var hrsPerMoCol string
 		var isDefaultUsage bool
 		if r.IsUsageBased {
 			cost = r.UsageMonthly
@@ -691,13 +733,30 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 				usageCol += " (default)"
 				isDefaultUsage = true
 			}
+			// For usage-based resources, show the first tier price as unit price
+			if len(r.Prices) > 0 {
+				for _, p := range r.Prices {
+					if p.IsCurrent {
+						if len(p.Tiers) > 0 {
+							unitPriceCol = "$" + p.Tiers[0].Price
+						} else {
+							unitPriceCol = "$" + p.RatePerHr.String()
+						}
+						break
+					}
+				}
+			}
 		} else {
 			cost = r.EffectiveRate.Mul(decimal.NewFromInt(hoursPerMonth))
+			unitPriceCol = "$" + r.EffectiveRate.String() + "/hr"
+			hrsPerMoCol = fmt.Sprintf("%d", hoursPerMonth)
 		}
 
 		rows = append(rows, row{
 			nameCol:        name,
 			typeCol:        pulumiType,
+			unitPriceCol:   unitPriceCol,
+			hrsPerMoCol:    hrsPerMoCol,
 			usageCol:       usageCol,
 			costCol:        formatDecimal(cost, 2),
 			isDefaultUsage: isDefaultUsage,
@@ -706,10 +765,12 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 
 	// Separator row + Total row.
 	rows = append(rows, row{
-		nameCol:  "─",
-		typeCol:  "─",
-		usageCol: "─",
-		costCol:  "─",
+		nameCol:      "─",
+		typeCol:      "─",
+		unitPriceCol: "─",
+		hrsPerMoCol:  "─",
+		usageCol:     "─",
+		costCol:      "─",
 	})
 	rows = append(rows, row{
 		nameCol: "Total Estimated Cost",
@@ -721,7 +782,7 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 	// Render using lipgloss table.
 	tableRows := make([][]string, len(rows))
 	for i, r := range rows {
-		tableRows[i] = []string{r.nameCol, r.typeCol, r.usageCol, r.costCol}
+		tableRows[i] = []string{r.nameCol, r.typeCol, r.unitPriceCol, r.hrsPerMoCol, r.usageCol, r.costCol}
 	}
 
 	totalRowIdx := len(rows) - 1
@@ -736,7 +797,7 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(borderSt).
-		Headers("Resource", "Type", "Usage", "Est. / mo").
+		Headers("Resource", "Type", "Unit Price", "Hrs / mo", "Usage", "Est. / mo").
 		Rows(tableRows...).
 		StyleFunc(func(rowIdx, col int) lipgloss.Style {
 			if rowIdx == table.HeaderRow {
@@ -746,7 +807,7 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 				return sepSt
 			}
 			if rowIdx == totalRowIdx {
-				if col == 3 {
+				if col == 5 {
 					return totalCostSt
 				}
 				return totalLabelSt
@@ -769,7 +830,9 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 				return nameSt
 			case 1:
 				return typeSt
-			case 2:
+			case 2, 3:
+				return usageSt
+			case 4:
 				if r.isDefaultUsage {
 					return usageDefaultSt
 				}
@@ -779,7 +842,10 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 			}
 		})
 
-	return t.Render()
+	titleLineSt := lipgloss.NewStyle().Foreground(colTotalGreen).Bold(true)
+	divider := strings.Repeat("─", 20)
+	title := titleLineSt.Render(divider + "  Total Cost Estimation  " + divider)
+	return title + "\n" + t.Render()
 }
 
 // formatDecimal formats a decimal.Decimal for display, trimming trailing zeros

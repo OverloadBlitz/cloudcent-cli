@@ -1,0 +1,86 @@
+{
+  "resources": [
+    {
+      "name": "server-vm",
+      "on_demand_rate": "0.043",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.043",
+          "unit": "Hrs",
+          "upfront_fee": "0"
+        },
+        {
+          "is_current": false,
+          "model": "Reserved",
+          "rate_per_hr": "0.0253424658",
+          "term": "1yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "SavingPlan",
+          "rate_per_hr": "0.02907",
+          "term": "1yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "SavingPlan",
+          "rate_per_hr": "0.01938",
+          "term": "3yr",
+          "unit": "Hrs"
+        },
+        {
+          "is_current": false,
+          "model": "Spot",
+          "rate_per_hr": "0.008265",
+          "unit": "Hrs"
+        }
+      ],
+      "props": {
+        "instanceType": "a1v2",
+        "operatingSystem": "linux",
+        "tier": "standard",
+        "tenancy": "Shared",
+        "type": "azure-native:compute:VirtualMachine"
+      }
+    },
+
+    {
+      "name": "server",
+      "props": {
+        "type": "azure-native:resources:ResourceGroup"
+      },
+      "status": "free resource"
+    },
+
+    {
+      "name": "server-ip",
+      "props": {
+        "type": "azure-native:network:PublicIPAddress"
+      },
+      "status": "Sorry, not supported yet"
+    },
+
+    {
+      "name": "server-network",
+      "props": {
+        "type": "azure-native:network:VirtualNetwork"
+      },
+      "status": "free resource"
+    },
+
+    {
+      "name": "server-nic",
+      "props": {
+        "type": "azure-native:network:NetworkInterface"
+      },
+      "status": "free resource"
+    }
+  ],
+  "totals": {
+    "monthly_total": "31.39"
+  }
+}

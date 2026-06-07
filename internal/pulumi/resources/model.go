@@ -55,6 +55,7 @@ type EstimateResult struct {
 	SubLabel     string // non-empty when grouped under a parent resource (e.g. "Requests", "Duration")
 	RawType      string
 	Product      string
+	Region       string
 	Props        map[string]string
 	InputsJSON   string          // formatted Pulumi input properties, empty for non-Pulumi estimates
 	Prices       []PriceEntry    // structured pricing options; nil if no pricing

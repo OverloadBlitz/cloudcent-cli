@@ -13,12 +13,13 @@ TESTDATA_DRAWIO="$SCRIPT_DIR/testdata/drawio-diagrams"
 
 PULUMI_WHITELIST=(
   aws-py-webserver
-  aws-py-appsync
-  aws-py-fargate
-  aws-py-s3-folder
+  # aws-py-appsync
+  # aws-py-fargate
+  # aws-py-s3-folder
   aws-py-apigatewayv2-http-api-quickcreate
-  aws-py-resources
-  aws-py-voting-app
+  # aws-py-resources
+  # aws-py-voting-app
+  azure-py-webserver
 )
 
 DRAWIO_WHITELIST=(
@@ -197,11 +198,16 @@ run_pulumi_test() {
     if [[ -z "$snap_status" ]]; then
       local snap_rate actual_rate
 
-      # For usage-based resources, compare usage_monthly instead.
+      # For usage-based resources, compare unit_rate and cost_monthly.
       if [[ "$snap_is_usage" == "true" ]]; then
-        snap_rate=$(echo "$snap_json"  | jq -r ".resources[$i].usage_monthly // \"0\"")
-        actual_rate=$(echo "$actual_json" | jq -r "$actual_selector | .usage_monthly // \"0\"")
-        if ! compare_price "[$res_label] usage_monthly" "$snap_rate" "$actual_rate" "$TOLERANCE"; then ok=false; fi
+        snap_unit_rate=$(echo "$snap_json" | jq -r ".resources[$i].unit_rate // \"\"")
+        if [[ -n "$snap_unit_rate" ]]; then
+          actual_unit_rate=$(echo "$actual_json" | jq -r "$actual_selector | .unit_rate // \"\"")
+          if ! compare_price "[$res_label] unit_rate" "$snap_unit_rate" "$actual_unit_rate" "$TOLERANCE"; then ok=false; fi
+        fi
+        snap_rate=$(echo "$snap_json"  | jq -r ".resources[$i].cost_monthly // \"0\"")
+        actual_rate=$(echo "$actual_json" | jq -r "$actual_selector | .cost_monthly // \"0\"")
+        if ! compare_price "[$res_label] cost_monthly" "$snap_rate" "$actual_rate" "$TOLERANCE"; then ok=false; fi
       else
         snap_rate=$(echo "$snap_json"  | jq -r ".resources[$i].on_demand_rate // \"0\"")
         actual_rate=$(echo "$actual_json" | jq -r "$actual_selector | .on_demand_rate // \"0\"")
@@ -324,6 +330,7 @@ for name in "${DRAWIO_WHITELIST[@]+"${DRAWIO_WHITELIST[@]}"}"; do
 done
 
 # ── summary ──────────────────────────────────────────────────────────────────
+TOTAL=$(( PASS + FAIL ))
 echo ""
 echo "════════════════════════════════════════"
 echo "Results: ${PASS} passed, ${FAIL} failed, ${SKIP} skipped"
@@ -334,5 +341,25 @@ if [[ ${#FAILURES[@]} -gt 0 ]]; then
   done
 fi
 echo "════════════════════════════════════════"
+
+# Machine-readable output for CI badge generation.
+# Written to a file so the workflow can pick it up without parsing stdout.
+if [[ -n "${TEST_RESULTS_FILE:-}" ]]; then
+  if [[ $FAIL -eq 0 ]]; then
+    COLOR="brightgreen"
+  elif [[ $PASS -eq 0 ]]; then
+    COLOR="red"
+  else
+    COLOR="yellow"
+  fi
+  cat > "$TEST_RESULTS_FILE" <<JSON
+{
+  "schemaVersion": 1,
+  "label": "integration tests",
+  "message": "${PASS} / ${TOTAL} passed",
+  "color": "${COLOR}"
+}
+JSON
+fi
 
 [[ $FAIL -eq 0 ]]

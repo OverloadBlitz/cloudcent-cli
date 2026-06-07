@@ -2,87 +2,68 @@
   "resources": [
     {
       "name": "cluster",
-      "props": {
-        "type": "aws:ecs/cluster:Cluster"
-      },
+      "props": { "type": "aws:ecs/cluster:Cluster" },
       "status": "free resource"
     },
     {
       "name": "web-secgrp",
-      "props": {
-        "type": "aws:ec2/securityGroup:SecurityGroup"
-      },
+      "props": { "type": "aws:ec2/securityGroup:SecurityGroup" },
       "status": "free resource"
     },
     {
       "name": "task-exec-role",
-      "props": {
-        "type": "aws:iam/role:Role"
-      },
+      "props": { "type": "aws:iam/role:Role" },
       "status": "free resource"
     },
     {
       "name": "app-tg",
-      "props": {
-        "type": "aws:lb/targetGroup:TargetGroup"
-      },
+      "props": { "type": "aws:lb/targetGroup:TargetGroup" },
       "status": "free resource"
     },
     {
       "name": "task-exec-policy",
-      "props": {
-        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
-      },
+      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
       "status": "free resource"
     },
     {
       "name": "app-task",
-      "props": {
-        "type": "aws:ecs/taskDefinition:TaskDefinition"
-      },
+      "props": { "type": "aws:ecs/taskDefinition:TaskDefinition" },
       "status": "free resource"
     },
     {
       "name": "app-lb",
       "sub_label": "Hourly",
-      "props": {
-        "type": "aws:lb/loadBalancer:LoadBalancer"
-      },
-      "on_demand_rate": "0.008"
+      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "on_demand_rate": "0.0225"
     },
     {
       "name": "app-lb",
       "sub_label": "LCU",
-      "props": {
-        "type": "aws:lb/loadBalancer:LoadBalancer"
-      },
-      "on_demand_rate": "0.008"
+      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "is_usage_based": true,
+      "unit_rate": "0.008",
+      "usage": "1000000",
+      "cost_monthly": "8000"
     },
     {
       "name": "web",
-      "props": {
-        "type": "aws:lb/listener:Listener"
-      },
+      "props": { "type": "aws:lb/listener:Listener" },
       "status": "free resource"
     },
     {
       "name": "app-svc",
       "sub_label": "CPU",
-      "props": {
-        "type": "aws:ecs/service:Service"
-      },
-      "on_demand_rate": "0.03238"
+      "props": { "type": "aws:ecs/service:Service" },
+      "on_demand_rate": "0.024285"
     },
     {
       "name": "app-svc",
       "sub_label": "Memory",
-      "props": {
-        "type": "aws:ecs/service:Service"
-      },
-      "on_demand_rate": "0.00356"
+      "props": { "type": "aws:ecs/service:Service" },
+      "on_demand_rate": "0.00534"
     }
   ],
   "totals": {
-    "monthly_total": "26.24"
+    "monthly_total": "8038.05125"
   }
 }

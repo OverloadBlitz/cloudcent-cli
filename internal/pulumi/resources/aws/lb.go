@@ -72,11 +72,24 @@ func DecodeLBLoadBalancer(record resources.ResourceRecord, region, inputsJSON st
 		"productFamily": productFamily,
 		"operation":     operation,
 		"group":         "ELB:Balancing",
+		"locationType":  "AWS Region",
 	}
 
+	hourlyAttrs := make(map[string]string)
+	for k, v := range baseAttrs {
+		hourlyAttrs[k] = v
+	}
+	hourlyAttrs["usagetype"] = "LoadBalancerUsage"
+
+	lcuAttrs := make(map[string]string)
+	for k, v := range baseAttrs {
+		lcuAttrs[k] = v
+	}
+	lcuAttrs["usagetype"] = "LCUUsage"
+
 	return []resources.DecodedResource{
-		elbEntry(record, region, inputsJSON, "Hourly", baseAttrs, props),
-		elbEntry(record, region, inputsJSON, "LCU", baseAttrs, props),
+		elbEntry(record, region, inputsJSON, "Hourly", hourlyAttrs, props),
+		elbEntry(record, region, inputsJSON, "LCU", lcuAttrs, props),
 	}
 }
 

@@ -2,50 +2,44 @@
   "resources": [
     {
       "name": "lambdaRole",
-      "props": {
-        "type": "aws:iam/role:Role"
-      },
+      "props": { "type": "aws:iam/role:Role" },
       "status": "free resource"
     },
     {
       "name": "lambdaRoleAttachment",
-      "props": {
-        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
-      },
+      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
       "status": "free resource"
     },
     {
       "name": "lambdaPermission",
-      "props": {
-        "type": "aws:lambda/permission:Permission"
-      },
+      "props": { "type": "aws:lambda/permission:Permission" },
       "status": "free resource"
     },
     {
       "name": "lambdaFunction",
       "sub_label": "Requests",
-      "props": {
-        "type": "aws:lambda/function:Function"
-      },
+      "props": { "type": "aws:lambda/function:Function" },
       "is_usage_based": true,
-      "usage_monthly": "0.2"
+      "unit_rate": "0.0000002",
+      "usage": "1000000",
+      "cost_monthly": "0.2"
     },
     {
       "name": "lambdaFunction",
       "sub_label": "Duration",
-      "props": {
-        "type": "aws:lambda/function:Function"
-      },
+      "props": { "type": "aws:lambda/function:Function" },
       "is_usage_based": true,
-      "usage_monthly": "16.6667"
+      "unit_rate": "0.0000166667",
+      "usage": "1000000",
+      "cost_monthly": "16.6667"
     },
     {
       "name": "httpApiGateway",
-      "props": {
-        "type": "aws:apigatewayv2/api:Api"
-      },
+      "props": { "type": "aws:apigatewayv2/api:Api" },
       "is_usage_based": true,
-      "usage_monthly": "1.0"
+      "unit_rate": "0.0000010000",
+      "usage": "1000000",
+      "cost_monthly": "1.0"
     }
   ],
   "totals": {
