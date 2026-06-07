@@ -33,9 +33,11 @@ jobs:
       - name: Download pricing metadata
         env:
           CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
         run: ./cloudcent-ci metadata refresh
 
       - name: Run integration tests
         env:
           CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
         run: bash integration_tests/run-tests.sh --binary ./cloudcent-ci
