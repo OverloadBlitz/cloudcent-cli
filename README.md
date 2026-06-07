@@ -92,7 +92,7 @@ cloudcent pulumi estimate
 | Provider | Services                                                      | Pricing Model | Data Source |
 |----------|---------------------------------------------------------------|---------------|-------------|
 | AWS | EC2, EBS, ECS, S3, ApiGateway, AppSync, DynamoDB, Lambda, SNS | OnDemand, Reserved, SavingPlan, Spot | AWS Pricing API |
-| Azure | WIP                                                           | OnDemand, Reserved, SavingPlan (with/without Azure Hybrid Benefit) | Azure Pricing Calculator |
+| Azure | Virtual Machines                                                           | OnDemand, Reserved, SavingPlan (with/without Azure Hybrid Benefit) | Azure Pricing Calculator |
 | GCP | WIP                                                           | OnDemand, CommittedUseDiscount, Preemptible | GCP Pricing SDK v1 |
 | OCI | WIP                                                           | OnDemand (PAYG) | OCI Cost Estimator |
 
