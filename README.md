@@ -1,7 +1,7 @@
 # CloudCent CLI
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Version](https://img.shields.io/badge/version-0.0.3--beta-orange)
+![Version](https://img.shields.io/badge/version-0.0.4--beta-orange)
 ![Integration Tests](https://github.com/OverloadBlitz/CloudCent-CLI/actions/workflows/integration-tests.yml/badge.svg)
 
 ![banner](/docs/cloudcent-banner.png)
