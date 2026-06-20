@@ -5,9 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SNAPSHOTS_PULUMI="$SCRIPT_DIR/snapshots/pulumi"
-SNAPSHOTS_DRAWIO="$SCRIPT_DIR/snapshots/drawio"
 TESTDATA_PULUMI="$SCRIPT_DIR/testdata/pulumi-examples"
-TESTDATA_DRAWIO="$SCRIPT_DIR/testdata/drawio-diagrams"
 
 # ── whitelists ───────────────────────────────────────────────────────────────
 
@@ -20,11 +18,6 @@ PULUMI_WHITELIST=(
   # aws-py-resources
   aws-py-voting-app
   azure-py-webserver
-)
-
-DRAWIO_WHITELIST=(
-  #aws-saas-example
-  #aws-simple-architecture
 )
 
 # ── defaults ────────────────────────────────────────────────────────────────
@@ -232,61 +225,6 @@ run_pulumi_test() {
   fi
 }
 
-# run_drawio_test <snapshot_file> <diagram_file> <name>
-run_drawio_test() {
-  local snapshot_file="$1"
-  local diagram_file="$2"
-  local name="$3"
-  local ok=true
-
-  echo ""
-  echo "── drawio: $name ──────────────────────────────────────"
-
-  if [[ ! -f "$diagram_file" ]]; then
-    echo "  SKIP: diagram file not found: $diagram_file"
-    ((SKIP++)) || true
-    return
-  fi
-
-  local actual_json
-  if ! actual_json=$("$BINARY" diagram estimate "$diagram_file" --output json 2>/tmp/cloudcent-stderr.txt); then
-    echo "  FAIL: cloudcent exited with error"
-    cat /tmp/cloudcent-stderr.txt | sed 's/^/    /' >&2
-    FAILURES+=("$name")
-    ((FAIL++)) || true
-    return
-  fi
-
-  if ! echo "$actual_json" | jq empty 2>/dev/null; then
-    echo "  FAIL: output is not valid JSON"
-    FAILURES+=("$name")
-    ((FAIL++)) || true
-    return
-  fi
-
-  local snap_json
-  snap_json=$(cat "$snapshot_file")
-
-  local snap_count actual_count
-  snap_count=$(echo "$snap_json"  | jq '.resources | length')
-  actual_count=$(echo "$actual_json" | jq '.resources | length')
-  if ! compare_field "resource_count" "$snap_count" "$actual_count"; then ok=false; fi
-
-  local snap_total actual_total
-  snap_total=$(echo "$snap_json"  | jq -r '.totals.monthly_total // "0"')
-  actual_total=$(echo "$actual_json" | jq -r '.totals.monthly_total // "0"')
-  if ! compare_price "totals.monthly_total" "$snap_total" "$actual_total" "$TOLERANCE"; then ok=false; fi
-
-  if $ok; then
-    echo "  PASS"
-    ((PASS++)) || true
-  else
-    echo "  FAIL"
-    FAILURES+=("$name")
-    ((FAIL++)) || true
-  fi
-}
-
 # ── run pulumi tests ─────────────────────────────────────────────────────────
 echo "=== Pulumi tests ==="
 if [[ ${#PULUMI_WHITELIST[@]} -eq 0 ]]; then
@@ -306,27 +244,6 @@ for name in "${PULUMI_WHITELIST[@]+"${PULUMI_WHITELIST[@]}"}"; do
     continue
   fi
   run_pulumi_test "$snapshot_file" "$TESTDATA_PULUMI/$name" "$name"
-done
-
-# ── run drawio tests ─────────────────────────────────────────────────────────
-echo ""
-echo "=== Drawio tests ==="
-if [[ ${#DRAWIO_WHITELIST[@]} -eq 0 ]]; then
-  echo "  (no diagrams in DRAWIO_WHITELIST — add entries to run-tests.sh to enable)"
-fi
-for name in "${DRAWIO_WHITELIST[@]+"${DRAWIO_WHITELIST[@]}"}"; do
-  snapshot_file="$SNAPSHOTS_DRAWIO/${name}.json"
-  if [[ ! -f "$snapshot_file" ]]; then
-    echo ""
-    echo "── drawio: $name ──────────────────────────────────────"
-    echo "  FAIL: snapshot not found at $snapshot_file"
-    FAILURES+=("$name (missing snapshot)")
-    ((FAIL++)) || true
-    continue
-  fi
-  # Find the matching .drawio file anywhere under testdata/drawio-diagrams.
-  diagram_file=$(find "$TESTDATA_DRAWIO" -name "${name}.drawio" | head -1)
-  run_drawio_test "$snapshot_file" "${diagram_file:-}" "$name"
 done
 
 # ── summary ──────────────────────────────────────────────────────────────────

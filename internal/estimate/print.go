@@ -230,7 +230,6 @@ func groupResults(results []resources.EstimateResult) []resultGroup {
 }
 
 // PrintResults renders per-resource pricing tables and a final cost summary.
-// Shared by `cloudcent pulumi estimate` and `cloudcent diagram estimate`.
 func PrintResults(results []resources.EstimateResult) {
 	titleSt := lipgloss.NewStyle().Foreground(colTitle).Bold(true)
 	mutedSt := lipgloss.NewStyle().Foreground(colMuted)

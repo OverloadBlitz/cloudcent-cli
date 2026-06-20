@@ -137,7 +137,6 @@ type MetadataResponse struct {
 	AttributeValues map[string]map[string][]string `json:"attribute_values"`
 	ProductGroups   map[string]uint64              `json:"product_groups"`
 	PulumiResources map[string]PulumiResourceDef   `json:"pulumi_resources"`
-	DrawioResources map[string]DrawioResourceDef   `json:"draw_io_resources"`
 	FreeTypes       []string                       `json:"free_types"`
 }
 
@@ -153,28 +152,6 @@ type PulumiAttrMapping struct {
 	Input   string            `json:"input,omitempty"`   // Pulumi input property name (supports dot-path like "sku.name")
 	Default string            `json:"default,omitempty"` // fallback value when input is missing
 	Map     map[string]string `json:"map,omitempty"`     // optional value translation (e.g. "postgres" → "PostgreSQL")
-}
-
-// DrawioResourceDef describes how a draw.io service stencil maps to the
-// pricing API. The key in MetadataResponse.DrawioResources is the full
-// normalised shape key produced by normaliseShapeKey, e.g.
-// "mxgraph.aws4.ec2_instance". This matches the draw.io raw data parquet
-// key (services + "." + product).
-type DrawioResourceDef struct {
-	Provider   string                       `json:"provider"`
-	Product    string                       `json:"product,omitempty"`
-	PulumiType string                       `json:"pulumi_type,omitempty"` // optional: inherit attrs from pulumi_resource_map
-	Attrs      map[string]DrawioAttrMapping `json:"attrs"`
-}
-
-// DrawioAttrMapping describes a single pricing attribute for a draw.io resource.
-// Unlike PulumiAttrMapping there is no Input field — the value always comes
-// from the user-edited spec. Default pre-fills the attr in the generated spec
-// so the user doesn't have to type common values (e.g. tenancy=Shared).
-// Map optionally translates the user-supplied value before sending to the API.
-type DrawioAttrMapping struct {
-	Default string            `json:"default,omitempty"` // pre-filled value in generated spec
-	Map     map[string]string `json:"map,omitempty"`     // optional value translation
 }
 
 // GenerateTokenResponse is the response from POST /api/auth/generate-token.

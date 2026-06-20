@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Use:     "cloudcent",
 	Version: Version,
 	Short:   "CloudCent — cloud pricing CLI",
-	Long:    "CloudCent is a CLI for estimating cloud costs of drawio and pulumi",
+	Long:    "CloudCent is a CLI for estimating cloud costs with pulumi",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	},
@@ -42,7 +42,6 @@ func init() {
 	rootCmd.AddCommand(
 		initCmd,
 		pricingCmd,
-		diagramCmd,
 		historyCmd,
 		cacheCmd,
 		configCmd,
