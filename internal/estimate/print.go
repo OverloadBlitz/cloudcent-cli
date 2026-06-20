@@ -50,6 +50,8 @@ type JSONResource struct {
 	UsageQty     float64 `json:"usage_qty,omitempty"`
 	UsageDefault bool    `json:"usage_default,omitempty"`
 	UsageMonthly string  `json:"cost_monthly,omitempty"`
+	// Hourly quantity multiplier (e.g. vCPU × task count for Fargate)
+	HourlyQty string `json:"hourly_qty,omitempty"`
 }
 
 // JSONTotals holds the cost summary for JSON output.
@@ -62,16 +64,49 @@ type JSONTotals struct {
 
 // JSONOutput is the top-level JSON structure.
 type JSONOutput struct {
-	Resources []JSONResource `json:"resources"`
-	Totals    JSONTotals     `json:"totals"`
+	Resources []JSONResource   `json:"resources"`
+	Totals    JSONTotals       `json:"totals"`
+	Guardrail *GuardrailResult `json:"guardrail,omitempty"`
+}
+
+// ComputeTotals sums the hourly and usage-based costs across all results into a
+// JSONTotals summary. It is the single source of truth for the monthly total,
+// shared by both the JSON output and the guardrail evaluation so the number a
+// guardrail judges always matches the number that is printed.
+func ComputeTotals(results []resources.EstimateResult) JSONTotals {
+	totalHourly := decimal.Zero
+	totalUsageMonthly := decimal.Zero
+
+	for _, r := range results {
+		if r.EffectiveRate.IsPositive() {
+			totalHourly = totalHourly.Add(r.EffectiveRate)
+		}
+		if r.IsUsageBased && r.UsageMonthly.IsPositive() {
+			totalUsageMonthly = totalUsageMonthly.Add(r.UsageMonthly)
+		}
+	}
+
+	monthly := totalHourly.Mul(decimal.NewFromInt(hoursPerMonth))
+	monthlyTotal := monthly.Add(totalUsageMonthly)
+
+	return JSONTotals{
+		HourlyRate:    totalHourly.String(),
+		MonthlyHourly: monthly.String(),
+		MonthlyUsage:  totalUsageMonthly.String(),
+		MonthlyTotal:  monthlyTotal.String(),
+	}
 }
 
 // PrintResultsJSON writes the estimate results as a JSON document to stdout.
 // It mirrors the same data as PrintResults but in a machine-readable format.
 func PrintResultsJSON(results []resources.EstimateResult) {
-	totalHourly := decimal.Zero
-	totalUsageMonthly := decimal.Zero
+	PrintResultsJSONWithGuardrail(results, nil)
+}
 
+// PrintResultsJSONWithGuardrail writes the estimate results as JSON, optionally
+// embedding a guardrail verdict under the top-level "guardrail" key. Passing a
+// nil guardrail omits the field entirely (identical to PrintResultsJSON).
+func PrintResultsJSONWithGuardrail(results []resources.EstimateResult, guardrail *GuardrailResult) {
 	jsonResources := make([]JSONResource, 0, len(results))
 	for _, r := range results {
 		jr := JSONResource{
@@ -92,7 +127,10 @@ func PrintResultsJSON(results []resources.EstimateResult) {
 
 		if r.OnDemandRate.IsPositive() {
 			jr.OnDemandRate = r.OnDemandRate.String()
-			totalHourly = totalHourly.Add(r.EffectiveRate)
+		}
+
+		if r.HourlyQty.IsPositive() {
+			jr.HourlyQty = r.HourlyQty.String()
 		}
 
 		if r.IsUsageBased {
@@ -101,9 +139,6 @@ func PrintResultsJSON(results []resources.EstimateResult) {
 			jr.UsageQty = r.UsageQty
 			jr.UsageDefault = r.UsageDefault
 			jr.UsageMonthly = r.UsageMonthly.String()
-			if r.UsageMonthly.IsPositive() {
-				totalUsageMonthly = totalUsageMonthly.Add(r.UsageMonthly)
-			}
 		}
 
 		for _, p := range r.Prices {
@@ -142,17 +177,10 @@ func PrintResultsJSON(results []resources.EstimateResult) {
 		jsonResources = append(jsonResources, jr)
 	}
 
-	monthly := totalHourly.Mul(decimal.NewFromInt(hoursPerMonth))
-	monthlyTotal := monthly.Add(totalUsageMonthly)
-
 	out := JSONOutput{
 		Resources: jsonResources,
-		Totals: JSONTotals{
-			HourlyRate:    totalHourly.String(),
-			MonthlyHourly: monthly.String(),
-			MonthlyUsage:  totalUsageMonthly.String(),
-			MonthlyTotal:  monthlyTotal.String(),
-		},
+		Totals:    ComputeTotals(results),
+		Guardrail: guardrail,
 	}
 
 	enc := json.NewEncoder(os.Stdout)
@@ -748,7 +776,16 @@ func renderTotalsTable(results []resources.EstimateResult, monthlyTotal decimal.
 			}
 		} else {
 			cost = r.EffectiveRate.Mul(decimal.NewFromInt(hoursPerMonth))
-			unitPriceCol = "$" + r.EffectiveRate.String() + "/hr"
+			if r.HourlyQty.IsPositive() {
+				unitPriceCol = "$" + r.BaseRate.String() + "/hr"
+				if r.HourlyQtyLabel != "" {
+					usageCol = r.HourlyQtyLabel
+				} else {
+					usageCol = r.HourlyQty.String()
+				}
+			} else {
+				unitPriceCol = "$" + r.EffectiveRate.String() + "/hr"
+			}
 			hrsPerMoCol = fmt.Sprintf("%d", hoursPerMonth)
 		}
 

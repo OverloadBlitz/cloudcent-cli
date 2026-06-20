@@ -377,6 +377,170 @@ func TestDecodeAPIGatewayV2APIAddsProtocolTypePricingAttr(t *testing.T) {
 	}
 }
 
+func TestConsolidateS3ObjectsMergesSameBucket(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "index.html",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("my-bucket"),
+				"key":    resource.NewStringProperty("index.html"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "favicon.png",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("my-bucket"),
+				"key":    resource.NewStringProperty("favicon.png"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "python.png",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("my-bucket"),
+				"key":    resource.NewStringProperty("python.png"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:s3/bucketObject:BucketObject": {Provider: "aws", Product: "S3"},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 consolidated resource, got %d", len(decoded))
+	}
+	if decoded[0].Name != "S3 Objects (x3)" {
+		t.Errorf("name = %q, want %q", decoded[0].Name, "S3 Objects (x3)")
+	}
+	if decoded[0].SubLabel != "Storage" {
+		t.Errorf("sub_label = %q, want Storage", decoded[0].SubLabel)
+	}
+	if decoded[0].Props["objectCount"] != "3" {
+		t.Errorf("objectCount = %q, want 3", decoded[0].Props["objectCount"])
+	}
+	wantObjects := "index.html, favicon.png, python.png"
+	if decoded[0].Props["objects"] != wantObjects {
+		t.Errorf("objects = %q, want %q", decoded[0].Props["objects"], wantObjects)
+	}
+}
+
+func TestConsolidateS3ObjectsLeavesSingleObjectUnchanged(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "index.html",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("my-bucket"),
+				"key":    resource.NewStringProperty("index.html"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:s3/bucketObject:BucketObject": {Provider: "aws", Product: "S3"},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 resource, got %d", len(decoded))
+	}
+	if decoded[0].Name != "index.html" {
+		t.Errorf("name = %q, want %q", decoded[0].Name, "index.html")
+	}
+	if _, ok := decoded[0].Props["objectCount"]; ok {
+		t.Errorf("objectCount should not be set for a single object")
+	}
+}
+
+func TestConsolidateS3ObjectsKeepsDifferentBucketsSeparate(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "a.html",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("bucket-a"),
+				"key":    resource.NewStringProperty("a.html"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "b.html",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("bucket-b"),
+				"key":    resource.NewStringProperty("b.html"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:s3/bucketObject:BucketObject": {Provider: "aws", Product: "S3"},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 2 {
+		t.Fatalf("expected 2 resources, got %d", len(decoded))
+	}
+	for _, d := range decoded {
+		if d.Name != "a.html" && d.Name != "b.html" {
+			t.Errorf("unexpected name %q", d.Name)
+		}
+	}
+}
+
+func TestConsolidateS3ObjectsMergesAcrossBucketObjectVersions(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type: "aws:s3/bucketObject:BucketObject",
+			Name: "old.html",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("my-bucket"),
+				"key":    resource.NewStringProperty("old.html"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+		{
+			Type: "aws:s3/bucketObjectv2:BucketObjectv2",
+			Name: "new.html",
+			Inputs: resource.PropertyMap{
+				"bucket": resource.NewStringProperty("my-bucket"),
+				"key":    resource.NewStringProperty("new.html"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:s3/bucketObject:BucketObject":     {Provider: "aws", Product: "S3"},
+			"aws:s3/bucketObjectv2:BucketObjectv2": {Provider: "aws", Product: "S3"},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 consolidated resource, got %d", len(decoded))
+	}
+	if decoded[0].Name != "S3 Objects (x2)" {
+		t.Errorf("name = %q, want %q", decoded[0].Name, "S3 Objects (x2)")
+	}
+}
+
 func TestDecodeAPIGatewayV2APIPreservesMappedProtocolTypeAttr(t *testing.T) {
 	records := []resources.ResourceRecord{
 		{

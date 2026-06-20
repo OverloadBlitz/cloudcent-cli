@@ -87,10 +87,20 @@ func DecodeLBLoadBalancer(record resources.ResourceRecord, region, inputsJSON st
 	}
 	lcuAttrs["usagetype"] = "LCUUsage"
 
-	return []resources.DecodedResource{
-		elbEntry(record, region, inputsJSON, "Hourly", hourlyAttrs, props),
-		elbEntry(record, region, inputsJSON, "LCU", lcuAttrs, props),
-	}
+	// AWS pricing data stores usagetype values with a region prefix (e.g.
+	// "USW2-LoadBalancerUsage"), so an exact-match query for the bare
+	// "LoadBalancerUsage"/"LCUUsage" value returns nothing outside us-east-1.
+	// Omit usagetype from the API query (QueryAttrs) and rely on suffix
+	// matching against Attrs on the client side.
+	hourly := elbEntry(record, region, inputsJSON, "Hourly", hourlyAttrs, props)
+	hourly.QueryAttrs = copyProps(hourly.Attrs)
+	delete(hourly.QueryAttrs, "usagetype")
+
+	lcu := elbEntry(record, region, inputsJSON, "LCU", lcuAttrs, props)
+	lcu.QueryAttrs = copyProps(lcu.Attrs)
+	delete(lcu.QueryAttrs, "usagetype")
+
+	return []resources.DecodedResource{hourly, lcu}
 }
 
 // DecodeClassicELB decodes aws:elb/loadBalancer:LoadBalancer (Classic ELB)

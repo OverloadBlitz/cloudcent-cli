@@ -1,7 +1,9 @@
 package pulumi
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/OverloadBlitz/cloudcent-cli/internal/api"
@@ -80,7 +82,92 @@ func DecodeAllResources(records []resources.ResourceRecord, meta *api.MetadataRe
 		results = append(results, decoded...)
 	}
 
-	return results
+	return consolidateS3Objects(results)
+}
+
+// s3ObjectTypes are the Pulumi resource types for individual S3 objects.
+var s3ObjectTypes = map[string]bool{
+	"aws:s3/bucketObject:BucketObject":     true,
+	"aws:s3/bucketObjectv2:BucketObjectv2": true,
+}
+
+// consolidateS3Objects merges multiple S3 BucketObject/BucketObjectv2
+// DecodedResources that share the same region, bucket, and storage volume
+// type into a single "S3 Objects (xN)" entry. Each object otherwise produces
+// its own "Storage" line with the same 25 GB-Mo default usage, duplicating
+// the bucket's own Storage line and overstating the estimate.
+func consolidateS3Objects(results []resources.DecodedResource) []resources.DecodedResource {
+	type group struct {
+		indices []int
+		names   []string
+	}
+	groups := make(map[string]*group)
+	var order []string
+
+	for i, d := range results {
+		if !s3ObjectTypes[d.RawType] {
+			continue
+		}
+		key := d.Region + "|" + d.Props["bucket"] + "|" + d.Props["volumeType"]
+		g, ok := groups[key]
+		if !ok {
+			g = &group{}
+			groups[key] = g
+			order = append(order, key)
+		}
+		g.indices = append(g.indices, i)
+		g.names = append(g.names, d.Name)
+	}
+
+	const maxNames = 5
+	replace := make(map[int]resources.DecodedResource)
+	remove := make(map[int]bool)
+
+	for _, key := range order {
+		g := groups[key]
+		if len(g.indices) < 2 {
+			continue
+		}
+
+		nameList := strings.Join(g.names[:min(len(g.names), maxNames)], ", ")
+		if len(g.names) > maxNames {
+			nameList += fmt.Sprintf(", ...and %d more", len(g.names)-maxNames)
+		}
+
+		first := g.indices[0]
+		consolidated := results[first]
+		consolidated.Name = fmt.Sprintf("S3 Objects (x%d)", len(g.indices))
+
+		props := make(map[string]string, len(consolidated.Props)+2)
+		for k, v := range consolidated.Props {
+			props[k] = v
+		}
+		props["objectCount"] = strconv.Itoa(len(g.indices))
+		props["objects"] = nameList
+		consolidated.Props = props
+
+		replace[first] = consolidated
+		for _, idx := range g.indices[1:] {
+			remove[idx] = true
+		}
+	}
+
+	if len(replace) == 0 {
+		return results
+	}
+
+	out := make([]resources.DecodedResource, 0, len(results))
+	for i, d := range results {
+		if remove[i] {
+			continue
+		}
+		if r, ok := replace[i]; ok {
+			out = append(out, r)
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
 }
 
 // decodeFromMapping uses a metadata PulumiResourceDef to extract pricing

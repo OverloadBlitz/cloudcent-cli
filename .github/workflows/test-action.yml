@@ -1,0 +1,160 @@
+name: Test Cost Guardrail Action
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - action.yml
+      - scripts/**
+      - cmd/**
+      - internal/**
+      - .github/workflows/test-action.yml
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_PATH: integration_tests/testdata/pulumi-examples/aws-py-s3-folder
+
+jobs:
+  # Budget well above the ~$1.24/mo actual cost — the action must report a pass
+  # and must not fail the step.
+  test-budget-pass:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build cloudcent binary
+        run: |
+          go build -o cloudcent ./main.go
+          sudo mv cloudcent /usr/local/bin/cloudcent
+
+      - name: Download pricing metadata
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+        run: cloudcent metadata refresh
+
+      - name: Run guardrail action (budget pass)
+        id: guardrail
+        uses: ./
+        with:
+          project-path: ${{ env.PROJECT_PATH }}
+          budget: "100"
+          install-cli: "false"
+          comment: "false"
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+
+      - name: Verify outputs
+        run: |
+          echo "breached=${{ steps.guardrail.outputs.breached }}"
+          echo "monthly-total=${{ steps.guardrail.outputs.monthly-total }}"
+          if [ "${{ steps.guardrail.outputs.breached }}" != "false" ]; then
+            echo "Expected breached=false, got '${{ steps.guardrail.outputs.breached }}'" >&2
+            exit 1
+          fi
+
+  # Budget far below the actual cost with fail-on-breach=false — the action
+  # must report a breach but the step itself must succeed (warn-only).
+  test-budget-breach-warn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build cloudcent binary
+        run: |
+          go build -o cloudcent ./main.go
+          sudo mv cloudcent /usr/local/bin/cloudcent
+
+      - name: Download pricing metadata
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+        run: cloudcent metadata refresh
+
+      - name: Run guardrail action (budget breach, warn-only)
+        id: guardrail
+        uses: ./
+        with:
+          project-path: ${{ env.PROJECT_PATH }}
+          budget: "0.50"
+          fail-on-breach: "false"
+          install-cli: "false"
+          comment: "false"
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+
+      - name: Verify outputs
+        run: |
+          echo "breached=${{ steps.guardrail.outputs.breached }}"
+          if [ "${{ steps.guardrail.outputs.breached }}" != "true" ]; then
+            echo "Expected breached=true, got '${{ steps.guardrail.outputs.breached }}'" >&2
+            exit 1
+          fi
+          echo "OK: breach detected and step succeeded (fail-on-breach=false)"
+
+  # Budget far below the actual cost with the default fail-on-breach=true —
+  # the action step itself must fail.
+  test-budget-breach-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build cloudcent binary
+        run: |
+          go build -o cloudcent ./main.go
+          sudo mv cloudcent /usr/local/bin/cloudcent
+
+      - name: Download pricing metadata
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+        run: cloudcent metadata refresh
+
+      - name: Run guardrail action (budget breach, should fail)
+        id: guardrail
+        continue-on-error: true
+        uses: ./
+        with:
+          project-path: ${{ env.PROJECT_PATH }}
+          budget: "0.50"
+          install-cli: "false"
+          comment: "false"
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+
+      - name: Verify action failed on breach
+        run: |
+          echo "outcome=${{ steps.guardrail.outcome }}"
+          echo "breached=${{ steps.guardrail.outputs.breached }}"
+          if [ "${{ steps.guardrail.outcome }}" != "failure" ]; then
+            echo "Expected the guardrail step to fail, got outcome='${{ steps.guardrail.outcome }}'" >&2
+            exit 1
+          fi
+          if [ "${{ steps.guardrail.outputs.breached }}" != "true" ]; then
+            echo "Expected breached=true, got '${{ steps.guardrail.outputs.breached }}'" >&2
+            exit 1
+          fi
+          echo "OK: action failed as expected on guardrail breach"

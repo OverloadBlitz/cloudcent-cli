@@ -1,0 +1,33 @@
+# Minimal PR cost guardrail using the reusable composite action.
+#
+# Copy this file into your repo at .github/workflows/cost-guardrail.yml and set
+# the CLOUDCENT_API_KEY / CLOUDCENT_CLI_ID repository secrets.
+name: Cost Guardrail
+
+on:
+  pull_request:
+
+permissions:
+  contents: read          # checkout + git worktree for the base-branch diff
+  pull-requests: write    # post the sticky cost comment
+
+jobs:
+  cost-guardrail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # required so the base commit is available for the diff
+
+      - name: Estimate & gate cloud cost
+        uses: CloudCentIO/cost-estimator-cli-rs@v1
+        with:
+          project-path: infra
+          budget: "500"             # fail if monthly cost > $500
+          max-increase: "50"        # fail if this PR adds > $50/mo
+          max-increase-pct: "20"    # fail if this PR adds > 20%
+          # config: |               # optional Pulumi config overrides
+          #   aws:region=us-west-2
+        env:
+          CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+          CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}

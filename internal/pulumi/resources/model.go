@@ -20,7 +20,8 @@ type DecodedResource struct {
 	Name           string
 	SubLabel       string            // non-empty when one resource produces multiple pricing queries (e.g. "Requests", "Duration")
 	RawType        string            // original Pulumi resource type, e.g. "aws:ec2/securityGroup:SecurityGroup"
-	Attrs          map[string]string // pricing attributes
+	Attrs          map[string]string // pricing attributes used for client-side match filtering
+	QueryAttrs     map[string]string // when non-nil, sent to the API instead of Attrs (use when query filters differ from match filters)
 	Props          map[string]string // display properties (instance type, region, etc.)
 	InputsJSON     string            // formatted Pulumi input properties for debugging/inspection
 	PriceFilter    string
@@ -28,6 +29,7 @@ type DecodedResource struct {
 	IsFreeType     bool            // true when the resource type is in the metadata free_types list
 	RegionFallback bool            // true when region was not detected and us-east-1 was used as default
 	HourlyQty      decimal.Decimal // quantity multiplier applied to the hourly rate (e.g. vCPU count × task count)
+	HourlyQtyLabel string          // optional display label for HourlyQty (e.g. "256 × 3 tasks"); overrides numeric display
 }
 
 // PriceEntry is one pricing option for a resource.
@@ -72,6 +74,16 @@ type EstimateResult struct {
 	UsageQty     float64         // monthly quantity used for estimation (user-supplied or default)
 	UsageDefault bool            // true when UsageQty came from the built-in default
 	UsageMonthly decimal.Decimal // estimated monthly cost = f(tiers, UsageQty)
+	// HourlyQty is the per-resource quantity multiplier applied to the base hourly rate
+	// (e.g. vCPU count × task count for Fargate, RCU/WCU for DynamoDB provisioned).
+	// Zero when no multiplier is set.
+	HourlyQty decimal.Decimal
+	// HourlyQtyLabel is a human-readable label for HourlyQty (e.g. "256 × 3 tasks").
+	// When non-empty, used in the totals table instead of the raw HourlyQty number.
+	HourlyQtyLabel string
+	// BaseRate is the per-unit hourly rate before HourlyQty is applied.
+	// Zero when HourlyQty is not set.
+	BaseRate decimal.Decimal
 	// Region metadata
 	RegionFallback bool // true when region was not detected and us-east-1 was used
 }

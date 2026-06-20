@@ -2,154 +2,551 @@
   "resources": [
     {
       "name": "app-cluster",
-      "props": { "type": "aws:ecs/cluster:Cluster" },
-      "status": "free resource"
-    },
-    {
-      "name": "app-exec-role",
-      "props": { "type": "aws:iam/role:Role" },
-      "status": "free resource"
-    },
-    {
-      "name": "app-vpc",
-      "props": { "type": "aws:ec2/vpc:Vpc" },
+      "product": "aws:ecs/cluster:Cluster",
+      "props": {
+        "type": "aws:ecs/cluster:Cluster"
+      },
       "status": "free resource"
     },
     {
       "name": "app-task-role",
-      "props": { "type": "aws:iam/role:Role" },
+      "product": "aws:iam/role:Role",
+      "props": {
+        "type": "aws:iam/role:Role"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "app-vpc",
+      "product": "aws:ec2/vpc:Vpc",
+      "props": {
+        "type": "aws:ec2/vpc:Vpc"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "app-exec-role",
+      "product": "aws:iam/role:Role",
+      "props": {
+        "type": "aws:iam/role:Role"
+      },
       "status": "free resource"
     },
     {
       "name": "app-ecr-repo",
-      "props": { "type": "aws:ecr/repository:Repository" },
+      "product": "aws:ecr/repository:Repository",
+      "props": {
+        "imageTagMutability": "MUTABLE",
+        "type": "aws:ecr/repository:Repository"
+      },
       "status": "Sorry, not supported yet"
     },
     {
+      "name": "app-access-policy",
+      "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+      "props": {
+        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+      },
+      "status": "free resource"
+    },
+    {
       "name": "app-vpc-subnet",
-      "props": { "type": "aws:ec2/subnet:Subnet" },
+      "product": "aws:ec2/subnet:Subnet",
+      "props": {
+        "type": "aws:ec2/subnet:Subnet"
+      },
       "status": "free resource"
     },
     {
       "name": "security-group",
-      "props": { "type": "aws:ec2/securityGroup:SecurityGroup" },
+      "product": "aws:ec2/securityGroup:SecurityGroup",
+      "props": {
+        "type": "aws:ec2/securityGroup:SecurityGroup"
+      },
       "status": "free resource"
     },
     {
       "name": "app-gateway",
-      "props": { "type": "aws:ec2/internetGateway:InternetGateway" },
+      "product": "aws:ec2/internetGateway:InternetGateway",
+      "props": {
+        "type": "aws:ec2/internetGateway:InternetGateway"
+      },
       "status": "free resource"
     },
     {
       "name": "redis-targetgroup",
-      "props": { "type": "aws:lb/targetGroup:TargetGroup" },
-      "status": "free resource"
-    },
-    {
-      "name": "flask-targetgroup",
-      "props": { "type": "aws:lb/targetGroup:TargetGroup" },
+      "product": "aws:lb/targetGroup:TargetGroup",
+      "props": {
+        "type": "aws:lb/targetGroup:TargetGroup"
+      },
       "status": "free resource"
     },
     {
       "name": "redis-task-definition",
-      "props": { "type": "aws:ecs/taskDefinition:TaskDefinition" },
+      "product": "aws:ecs/taskDefinition:TaskDefinition",
+      "props": {
+        "type": "aws:ecs/taskDefinition:TaskDefinition"
+      },
       "status": "free resource"
     },
     {
-      "name": "app-exec-policy",
-      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
-      "status": "free resource"
-    },
-    {
-      "name": "app-access-policy",
-      "props": { "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment" },
+      "name": "flask-targetgroup",
+      "product": "aws:lb/targetGroup:TargetGroup",
+      "props": {
+        "type": "aws:lb/targetGroup:TargetGroup"
+      },
       "status": "free resource"
     },
     {
       "name": "app-lifecycle-policy",
-      "props": { "type": "aws:ecr/lifecyclePolicy:LifecyclePolicy" },
+      "product": "aws:ecr/lifecyclePolicy:LifecyclePolicy",
+      "props": {
+        "type": "aws:ecr/lifecyclePolicy:LifecyclePolicy"
+      },
+      "status": "free resource"
+    },
+    {
+      "name": "app-exec-policy",
+      "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+      "props": {
+        "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+      },
       "status": "free resource"
     },
     {
       "name": "flask-dockerimage",
-      "props": { "type": "docker-build:index:Image" },
-      "status": "Sorry, not supported yet"
-    },
-    {
-      "name": "redis-balancer",
-      "sub_label": "Hourly",
-      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
-      "status": "Sorry, not supported yet"
-    },
-    {
-      "name": "redis-balancer",
-      "sub_label": "LCU",
-      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
-      "status": "Sorry, not supported yet"
-    },
-    {
-      "name": "flask-balancer",
-      "sub_label": "Hourly",
-      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
-      "status": "Sorry, not supported yet"
-    },
-    {
-      "name": "flask-balancer",
-      "sub_label": "LCU",
-      "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
+      "product": "docker-build:index:Image",
+      "props": {
+        "buildOnPreview": "true",
+        "network": "default",
+        "push": "true",
+        "type": "docker-build:index:Image"
+      },
       "status": "Sorry, not supported yet"
     },
     {
       "name": "app-routetable",
-      "props": { "type": "aws:ec2/routeTable:RouteTable" },
+      "product": "aws:ec2/routeTable:RouteTable",
+      "props": {
+        "type": "aws:ec2/routeTable:RouteTable"
+      },
       "status": "free resource"
     },
     {
       "name": "redis-listener",
-      "props": { "type": "aws:lb/listener:Listener" },
+      "product": "aws:lb/listener:Listener",
+      "props": {
+        "type": "aws:lb/listener:Listener"
+      },
       "status": "free resource"
     },
     {
       "name": "app_routetable_association",
-      "props": { "type": "aws:ec2/mainRouteTableAssociation:MainRouteTableAssociation" },
+      "product": "aws:ec2/mainRouteTableAssociation:MainRouteTableAssociation",
+      "props": {
+        "type": "aws:ec2/mainRouteTableAssociation:MainRouteTableAssociation"
+      },
       "status": "free resource"
     },
     {
       "name": "flask-listener",
-      "props": { "type": "aws:lb/listener:Listener" },
+      "product": "aws:lb/listener:Listener",
+      "props": {
+        "type": "aws:lb/listener:Listener"
+      },
       "status": "free resource"
     },
     {
       "name": "flask-task-definition",
-      "props": { "type": "aws:ecs/taskDefinition:TaskDefinition" },
+      "product": "aws:ecs/taskDefinition:TaskDefinition",
+      "props": {
+        "type": "aws:ecs/taskDefinition:TaskDefinition"
+      },
       "status": "free resource"
     },
     {
+      "name": "redis-balancer",
+      "on_demand_rate": "0.0225",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.0225",
+          "unit": "Hrs",
+          "upfront_fee": "0"
+        }
+      ],
+      "product": "aws ELB",
+      "props": {
+        "internal": "false",
+        "loadBalancerType": "network",
+        "type": "aws:lb/loadBalancer:LoadBalancer"
+      },
+      "sub_label": "Hourly"
+    },
+    {
+      "cost_monthly": "6",
+      "is_usage_based": true,
+      "name": "redis-balancer",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.006",
+          "unit": "LCU-Hrs",
+          "upfront_fee": "0"
+        }
+      ],
+      "product": "aws ELB",
+      "props": {
+        "internal": "false",
+        "loadBalancerType": "network",
+        "type": "aws:lb/loadBalancer:LoadBalancer"
+      },
+      "sub_label": "LCU",
+      "unit_rate": "0.006",
+      "usage_default": true,
+      "usage_qty": 1000,
+      "usage_unit": "LCU-Hrs"
+    },
+    {
+      "name": "flask-balancer",
+      "on_demand_rate": "0.0225",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.0225",
+          "unit": "Hrs",
+          "upfront_fee": "0"
+        }
+      ],
+      "product": "aws ELB",
+      "props": {
+        "internal": "false",
+        "loadBalancerType": "network",
+        "type": "aws:lb/loadBalancer:LoadBalancer"
+      },
+      "sub_label": "Hourly"
+    },
+    {
+      "cost_monthly": "6",
+      "is_usage_based": true,
+      "name": "flask-balancer",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.006",
+          "unit": "LCU-Hrs",
+          "upfront_fee": "0"
+        }
+      ],
+      "product": "aws ELB",
+      "props": {
+        "internal": "false",
+        "loadBalancerType": "network",
+        "type": "aws:lb/loadBalancer:LoadBalancer"
+      },
+      "sub_label": "LCU",
+      "unit_rate": "0.006",
+      "usage_default": true,
+      "usage_qty": 1000,
+      "usage_unit": "LCU-Hrs"
+    },
+    {
+      "hourly_qty": "0.25",
       "name": "redis-service",
-      "sub_label": "CPU",
-      "props": { "type": "aws:ecs/service:Service" },
-      "on_demand_rate": "0.008095"
+      "on_demand_rate": "0.04048",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.04048",
+          "unit": "hours",
+          "upfront_fee": "0"
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0194304",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.02024",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.022264",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0295504",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.03036",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.032384",
+          "term": "1yr",
+          "unit": ""
+        }
+      ],
+      "product": "aws",
+      "props": {
+        "launchType": "FARGATE",
+        "region": "us-west-2",
+        "taskCpu": "256",
+        "taskMemory": "512",
+        "type": "aws:ecs/service:Service"
+      },
+      "region": "us-west-2",
+      "sub_label": "CPU"
     },
     {
+      "hourly_qty": "0.5",
       "name": "redis-service",
-      "sub_label": "Memory",
-      "props": { "type": "aws:ecs/service:Service" },
-      "on_demand_rate": "0.00178"
+      "on_demand_rate": "0.004445",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.004445",
+          "unit": "hours",
+          "upfront_fee": "0"
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0021336",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.0022225",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.00244475",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.00324485",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.00333375",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.003556",
+          "term": "1yr",
+          "unit": ""
+        }
+      ],
+      "product": "aws",
+      "props": {
+        "launchType": "FARGATE",
+        "region": "us-west-2",
+        "taskCpu": "256",
+        "taskMemory": "512",
+        "type": "aws:ecs/service:Service"
+      },
+      "region": "us-west-2",
+      "sub_label": "Memory"
     },
     {
+      "hourly_qty": "0.25",
       "name": "flask-service",
-      "sub_label": "CPU",
-      "props": { "type": "aws:ecs/service:Service" },
-      "on_demand_rate": "0.008095"
+      "on_demand_rate": "0.04048",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.04048",
+          "unit": "hours",
+          "upfront_fee": "0"
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0194304",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.02024",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.022264",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0295504",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.03036",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.032384",
+          "term": "1yr",
+          "unit": ""
+        }
+      ],
+      "product": "aws",
+      "props": {
+        "launchType": "FARGATE",
+        "region": "us-west-2",
+        "taskCpu": "256",
+        "taskMemory": "512",
+        "type": "aws:ecs/service:Service"
+      },
+      "region": "us-west-2",
+      "sub_label": "CPU"
     },
     {
+      "hourly_qty": "0.5",
       "name": "flask-service",
-      "sub_label": "Memory",
-      "props": { "type": "aws:ecs/service:Service" },
-      "on_demand_rate": "0.00178"
+      "on_demand_rate": "0.004445",
+      "prices": [
+        {
+          "is_current": true,
+          "model": "OnDemand",
+          "rate_per_hr": "0.004445",
+          "unit": "hours",
+          "upfront_fee": "0"
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.0021336",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.0022225",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.00244475",
+          "term": "3yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "All Upfront",
+          "rate_per_hr": "0.00324485",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "Partial Upfront",
+          "rate_per_hr": "0.00333375",
+          "term": "1yr",
+          "unit": ""
+        },
+        {
+          "is_current": false,
+          "model": "ComputeSavingsPlans",
+          "purchase_option": "No Upfront",
+          "rate_per_hr": "0.003556",
+          "term": "1yr",
+          "unit": ""
+        }
+      ],
+      "product": "aws",
+      "props": {
+        "launchType": "FARGATE",
+        "region": "us-west-2",
+        "taskCpu": "256",
+        "taskMemory": "512",
+        "type": "aws:ecs/service:Service"
+      },
+      "region": "us-west-2",
+      "sub_label": "Memory"
     }
   ],
   "totals": {
-    "monthly_total": "14.4175"
+    "hourly_rate": "0.069685",
+    "monthly_hourly": "50.87005",
+    "monthly_total": "62.87005",
+    "monthly_usage": "12"
   }
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -20,9 +21,19 @@ var rootCmd = &cobra.Command{
 }
 
 // Execute is the entry point called from main.
+//
+// Exit code convention:
+//
+//	0 — success / guardrail passed
+//	1 — runtime error (build, auth, network, bad input)
+//	2 — a cost guardrail threshold was breached
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		var breach *guardrailBreachError
+		if errors.As(err, &breach) {
+			os.Exit(2)
+		}
 		os.Exit(1)
 	}
 }

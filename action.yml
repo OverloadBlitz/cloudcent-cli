@@ -1,0 +1,272 @@
+name: "CloudCent Cost Guardrail"
+description: >-
+  Estimate the cloud cost of a Pulumi project with no cloud credentials and gate
+  pull requests on an absolute budget and/or the cost increase versus the base
+  branch. Posts a sticky cost comment on the PR.
+author: "CloudCent"
+branding:
+  icon: "dollar-sign"
+  color: "green"
+
+inputs:
+  project-path:
+    description: "Path to the Pulumi project to estimate."
+    required: false
+    default: "."
+  budget:
+    description: "Absolute monthly budget in USD. Fails the check if the estimate exceeds it. Leave empty to disable."
+    required: false
+    default: ""
+  max-increase:
+    description: "Max allowed absolute cost increase (USD) versus the base branch. Requires a PR. Leave empty to disable."
+    required: false
+    default: ""
+  max-increase-pct:
+    description: "Max allowed percentage cost increase versus the base branch. Requires a PR. Leave empty to disable."
+    required: false
+    default: ""
+  config:
+    description: "Newline-separated Pulumi config overrides, each 'ns:key=value'. Passed as repeated --config flags."
+    required: false
+    default: ""
+  usage:
+    description: "Newline-separated usage overrides, each 'resource=quantity'. Passed as repeated --usage flags."
+    required: false
+    default: ""
+  model:
+    description: "Newline-separated pricing model overrides. Passed as repeated --model flags."
+    required: false
+    default: ""
+  version:
+    description: "cloudcent CLI version to install (e.g. v0.0.3-beta), or 'latest'."
+    required: false
+    default: "latest"
+  comment:
+    description: "Post/update a sticky cost comment on the pull request."
+    required: false
+    default: "true"
+  fail-on-breach:
+    description: "Fail the workflow step when a guardrail threshold is breached. Set false for warn-only."
+    required: false
+    default: "true"
+  install-pulumi:
+    description: "Install the Pulumi CLI (required for Pulumi projects unless already on PATH)."
+    required: false
+    default: "true"
+  install-cli:
+    description: "Install the cloudcent CLI from GitHub releases. Set to 'false' if it is already on PATH (e.g. a locally built binary for testing this action)."
+    required: false
+    default: "true"
+
+outputs:
+  monthly-total:
+    description: "Estimated monthly cost (USD) of the head revision."
+    value: ${{ steps.estimate.outputs.monthly-total }}
+  monthly-delta:
+    description: "Cost change (USD) versus the base branch, when available."
+    value: ${{ steps.estimate.outputs.monthly-delta }}
+  breached:
+    description: "'true' when a guardrail threshold was breached, else 'false'."
+    value: ${{ steps.estimate.outputs.breached }}
+  json-path:
+    description: "Path to the full head estimate JSON document."
+    value: ${{ steps.estimate.outputs.json-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Pulumi CLI
+      if: ${{ inputs.install-pulumi == 'true' }}
+      shell: bash
+      run: |
+        if ! command -v pulumi >/dev/null 2>&1; then
+          curl -fsSL https://get.pulumi.com | sh
+          echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
+        fi
+
+    - name: Install uv
+      shell: bash
+      run: |
+        if ! command -v uv >/dev/null 2>&1; then
+          curl -fsSL https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        fi
+
+    - name: Install cloudcent CLI
+      if: ${{ inputs.install-cli == 'true' }}
+      shell: bash
+      env:
+        CC_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        REPO="OverloadBlitz/cloudcent-cli"
+        BIN_DIR="$HOME/.cloudcent/bin"
+        mkdir -p "$BIN_DIR"
+
+        os="$(uname -s)"; arch="$(uname -m)"
+        case "$os" in Linux) os=linux ;; Darwin) os=darwin ;; *) echo "unsupported OS: $os" >&2; exit 1 ;; esac
+        case "$arch" in x86_64|amd64) arch=amd64 ;; arm64|aarch64) arch=arm64 ;; *) echo "unsupported arch: $arch" >&2; exit 1 ;; esac
+
+        version="$CC_VERSION"
+        if [ -z "$version" ] || [ "$version" = "latest" ]; then
+          version="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+            | grep '"tag_name"' | head -1 | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
+        fi
+        if [ -z "$version" ]; then echo "could not resolve cloudcent version" >&2; exit 1; fi
+
+        ver="${version#v}"
+        archive="cloudcent_${ver}_${os}_${arch}.tar.gz"
+        url="https://github.com/${REPO}/releases/download/${version}/${archive}"
+        tmp="$(mktemp -d)"
+        echo "Downloading $url"
+        curl -fSL "$url" -o "$tmp/$archive"
+        tar -xzf "$tmp/$archive" -C "$tmp"
+        mv "$tmp/cloudcent" "$BIN_DIR/cloudcent"
+        chmod +x "$BIN_DIR/cloudcent"
+        echo "$BIN_DIR" >> "$GITHUB_PATH"
+
+    - name: Download pricing metadata
+      shell: bash
+      run: cloudcent metadata refresh
+
+    - name: Estimate baseline (base branch)
+      id: baseline
+      if: ${{ github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        PROJECT_PATH: ${{ inputs.project-path }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_USAGE: ${{ inputs.usage }}
+        INPUT_MODEL: ${{ inputs.model }}
+      run: |
+        set -uo pipefail
+        build_flags() {
+          local flag="$1" values="$2"
+          while IFS= read -r line; do
+            line="$(echo "$line" | xargs)"
+            [ -z "$line" ] && continue
+            printf '%s\0%s\0' "$flag" "$line"
+          done <<< "$values"
+        }
+        mapfile -d '' EXTRA < <(build_flags --config "$INPUT_CONFIG"; build_flags --usage "$INPUT_USAGE"; build_flags --model "$INPUT_MODEL")
+
+        WT="$(mktemp -d)"
+        # Add a detached worktree at the PR base so we can estimate the previous cost.
+        if ! git worktree add --detach "$WT" "$BASE_SHA" >/dev/null 2>&1; then
+          echo "Could not create base worktree (shallow clone? use fetch-depth: 0). Skipping baseline." >&2
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ ! -f "$WT/$PROJECT_PATH/Pulumi.yaml" ]; then
+          echo "No Pulumi project at base $PROJECT_PATH — skipping baseline (absolute-budget check only)." >&2
+          git worktree remove --force "$WT" >/dev/null 2>&1 || true
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if cloudcent pulumi estimate "$WT/$PROJECT_PATH" "${EXTRA[@]}" -o json > /tmp/cc-base.json 2> /tmp/cc-base.log; then
+          echo "path=/tmp/cc-base.json" >> "$GITHUB_OUTPUT"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "Base estimate failed — continuing without diff." >&2
+          cat /tmp/cc-base.log >&2 || true
+          echo "available=false" >> "$GITHUB_OUTPUT"
+        fi
+        git worktree remove --force "$WT" >/dev/null 2>&1 || true
+
+    - name: Estimate cost & evaluate guardrail
+      id: estimate
+      shell: bash
+      env:
+        PROJECT_PATH: ${{ inputs.project-path }}
+        BUDGET: ${{ inputs.budget }}
+        MAX_INCREASE: ${{ inputs.max-increase }}
+        MAX_INCREASE_PCT: ${{ inputs.max-increase-pct }}
+        BASELINE_AVAILABLE: ${{ steps.baseline.outputs.available }}
+        BASELINE_PATH: ${{ steps.baseline.outputs.path }}
+        FAIL_ON_BREACH: ${{ inputs.fail-on-breach }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_USAGE: ${{ inputs.usage }}
+        INPUT_MODEL: ${{ inputs.model }}
+      run: |
+        set -uo pipefail
+        build_flags() {
+          local flag="$1" values="$2"
+          while IFS= read -r line; do
+            line="$(echo "$line" | xargs)"
+            [ -z "$line" ] && continue
+            printf '%s\0%s\0' "$flag" "$line"
+          done <<< "$values"
+        }
+        ARGS=()
+        [ -n "$BUDGET" ] && ARGS+=(--budget "$BUDGET")
+        if [ "${BASELINE_AVAILABLE:-false}" = "true" ] && [ -f "${BASELINE_PATH:-}" ]; then
+          ARGS+=(--baseline "$BASELINE_PATH")
+          [ -n "$MAX_INCREASE" ] && ARGS+=(--max-increase "$MAX_INCREASE")
+          [ -n "$MAX_INCREASE_PCT" ] && ARGS+=(--max-increase-pct "$MAX_INCREASE_PCT")
+        fi
+        [ "$FAIL_ON_BREACH" != "true" ] && ARGS+=(--no-fail)
+
+        mapfile -d '' EXTRA < <(build_flags --config "$INPUT_CONFIG"; build_flags --usage "$INPUT_USAGE"; build_flags --model "$INPUT_MODEL")
+
+        JSON_PATH=/tmp/cc-head.json
+        set +e
+        cloudcent pulumi estimate "$PROJECT_PATH" "${EXTRA[@]}" "${ARGS[@]}" -o json > "$JSON_PATH" 2> /tmp/cc-head.log
+        CODE=$?
+        set -e
+        cat /tmp/cc-head.log >&2 || true
+
+        # Exit 0 = pass, 2 = guardrail breach, anything else = real error.
+        if [ "$CODE" != "0" ] && [ "$CODE" != "2" ]; then
+          echo "cloudcent failed with exit code $CODE" >&2
+          exit "$CODE"
+        fi
+
+        BREACHED=false
+        if [ "$CODE" = "2" ]; then
+          BREACHED=true
+        elif [ "$CODE" = "0" ]; then
+          GUARDRAIL_PASSED="$(python3 -c "import json; d=json.load(open('$JSON_PATH')); g=d.get('guardrail'); print('true' if g is None or g.get('passed', True) else 'false')")"
+          [ "$GUARDRAIL_PASSED" = "false" ] && BREACHED=true
+        fi
+
+        MONTHLY="$(python3 -c "import json;print(json.load(open('$JSON_PATH'))['totals']['monthly_total'])")"
+        DELTA="$(python3 -c "import json;g=json.load(open('$JSON_PATH')).get('guardrail') or {};print(g.get('delta',''))")"
+
+        {
+          echo "monthly-total=$MONTHLY"
+          echo "monthly-delta=$DELTA"
+          echo "breached=$BREACHED"
+          echo "json-path=$JSON_PATH"
+          echo "exit-code=$CODE"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Render cost comment
+      id: render
+      if: ${{ github.event_name == 'pull_request' && inputs.comment == 'true' }}
+      shell: bash
+      env:
+        JSON_PATH: ${{ steps.estimate.outputs.json-path }}
+        PROJECT_PATH: ${{ inputs.project-path }}
+      run: |
+        python3 "${{ github.action_path }}/scripts/render_comment.py" "$JSON_PATH" "$PROJECT_PATH" > /tmp/cc-comment.md
+        echo "path=/tmp/cc-comment.md" >> "$GITHUB_OUTPUT"
+
+    - name: Post sticky cost comment
+      if: ${{ github.event_name == 'pull_request' && inputs.comment == 'true' }}
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: cloudcent-cost-guardrail
+        path: /tmp/cc-comment.md
+
+    - name: Enforce guardrail
+      shell: bash
+      env:
+        BREACHED: ${{ steps.estimate.outputs.breached }}
+        FAIL_ON_BREACH: ${{ inputs.fail-on-breach }}
+      run: |
+        if [ "$BREACHED" = "true" ] && [ "$FAIL_ON_BREACH" = "true" ]; then
+          echo "::error::Cost guardrail breached — see the estimate above." >&2
+          exit 1
+        fi
+        echo "Cost guardrail OK."

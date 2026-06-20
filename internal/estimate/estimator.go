@@ -47,6 +47,9 @@ var serviceUsageDefaults = map[string]float64{
 	// AppSync — invocations
 	"AppSync/Invocations": 1_000_000,
 
+	// ELB — LCU-Hrs
+	"ELB/LCU": 1_000,
+
 	// DynamoDB — GB-Mo
 	"DynamoDB/Storage":     25,
 	"DynamoDB/PITR Backup": 25,
@@ -245,11 +248,15 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 	}
 
 	for _, record := range billable {
+		queryAttrs := record.Attrs
+		if len(record.QueryAttrs) > 0 {
+			queryAttrs = record.QueryAttrs
+		}
 		item := api.BatchPricingRequestItem{
 			Provider: record.Provider,
 			Region:   record.Region,
 			Product:  record.Service,
-			Attrs:    compactAttrs(record.Attrs),
+			Attrs:    compactAttrs(queryAttrs),
 			Price:    effectivePriceFilter(record.PriceFilter),
 		}
 		requests.Requests = append(requests.Requests, item)
@@ -345,10 +352,10 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 		}
 		isUsage, usageUnit := detectUsageBased(entries)
 
-		// Apply per-hour quantity multiplier when set
+		// Apply per-hour quantity multiplier when set; preserve base rate for display.
+		baseRate := onDemand
 		if record.HourlyQty.IsPositive() {
 			effectiveRate = effectiveRate.Mul(record.HourlyQty)
-			onDemand = onDemand.Mul(record.HourlyQty)
 		}
 
 		est := resources.EstimateResult{
@@ -365,6 +372,9 @@ func EstimateAllResources(client batchPricingFetcher, records []resources.Decode
 			IsAmortized:    isAmortized,
 			IsUsageBased:   isUsage,
 			UsageUnit:      usageUnit,
+			HourlyQty:      record.HourlyQty,
+			HourlyQtyLabel: record.HourlyQtyLabel,
+			BaseRate:       baseRate,
 			RegionFallback: record.RegionFallback,
 		}
 
@@ -502,9 +512,19 @@ func effectivePriceFilter(value string) string {
 }
 
 func findMatchingPrice(record resources.DecodedResource, response map[string][]api.PricingItem) (api.PricingItem, bool) {
+	// Pass 1: exact matching on all attributes including usagetype.
 	for _, items := range response {
 		for _, item := range items {
-			if pricingItemMatchesRecord(item, record) {
+			if pricingItemMatchesRecord(item, record, false) {
+				return item, true
+			}
+		}
+	}
+	// Pass 2: allow usagetype suffix matching for region-prefixed values
+	// (e.g. "USW2-LoadBalancerUsage" matching expected "LoadBalancerUsage").
+	for _, items := range response {
+		for _, item := range items {
+			if pricingItemMatchesRecord(item, record, true) {
 				return item, true
 			}
 		}
@@ -512,7 +532,7 @@ func findMatchingPrice(record resources.DecodedResource, response map[string][]a
 	return api.PricingItem{}, false
 }
 
-func pricingItemMatchesRecord(item api.PricingItem, record resources.DecodedResource) bool {
+func pricingItemMatchesRecord(item api.PricingItem, record resources.DecodedResource, usageSuffixMatch bool) bool {
 	if record.Provider != "" && !equalFoldTrim(item.Provider, record.Provider) {
 		return false
 	}
@@ -529,7 +549,20 @@ func pricingItemMatchesRecord(item api.PricingItem, record resources.DecodedReso
 	expectedAttrs := compactAttrs(record.Attrs)
 	for key, expectedValue := range expectedAttrs {
 		actualValue, ok := lookupAttrCaseInsensitive(item.Attributes, key)
-		if !ok || actualValue == nil || !equalFoldTrim(actualValue.String(), expectedValue) {
+		if !ok || actualValue == nil {
+			return false
+		}
+
+		if equalFoldTrim(key, "usagetype") && usageSuffixMatch {
+			lowerActual := strings.ToLower(strings.TrimSpace(actualValue.String()))
+			lowerExpected := strings.ToLower(strings.TrimSpace(expectedValue))
+			if lowerActual != lowerExpected && !strings.HasSuffix(lowerActual, "-"+lowerExpected) {
+				return false
+			}
+			continue
+		}
+
+		if !equalFoldTrim(actualValue.String(), expectedValue) {
 			return false
 		}
 	}

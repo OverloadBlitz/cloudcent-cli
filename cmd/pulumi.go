@@ -10,12 +10,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/OverloadBlitz/cloudcent-cli/internal/api"
 	"github.com/OverloadBlitz/cloudcent-cli/internal/estimate"
 	internalpulumi "github.com/OverloadBlitz/cloudcent-cli/internal/pulumi"
+	"github.com/charmbracelet/lipgloss"
 	pulumidiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	pulumicfg "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -36,6 +38,14 @@ var pulumiEstimateUsageFlags []string
 var pulumiEstimateModelFlags []string
 var pulumiEstimateOutput string
 
+// Guardrail flags. The pointer-returning flag helpers (Float64) can't express
+// "unset", so we track presence via cmd.Flags().Changed at evaluation time.
+var pulumiEstimateBudget float64
+var pulumiEstimateBaseline string
+var pulumiEstimateMaxIncrease float64
+var pulumiEstimateMaxIncreasePct float64
+var pulumiEstimateNoFail bool
+
 var pulumiEstimateCmd = &cobra.Command{
 	Use:   "estimate [path]",
 	Short: "Estimate costs for a Pulumi project using mock interception",
@@ -44,6 +54,11 @@ directory) against a local mock gRPC server. No AWS credentials or Pulumi
 account required — resources are intercepted before any cloud API is called.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runPulumiEstimate,
+	// On a guardrail breach we return an error to drive the exit code, but the
+	// breach reason is already printed by us — suppress cobra's usage dump and
+	// duplicate error print so CI logs stay clean.
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 func init() {
@@ -54,6 +69,13 @@ func init() {
 	pulumiEstimateCmd.Flags().StringArrayVar(&pulumiEstimateUsageFlags, "usage", nil, "Monthly usage for a usage-based resource, e.g. --usage my-api=5000000 (can be repeated)")
 	pulumiEstimateCmd.Flags().StringArrayVar(&pulumiEstimateModelFlags, "model", nil, "Pricing model override, e.g. --model \"Reserved:standard:1yr\" or --model \"my-ec2=spot\" (can be repeated)")
 	pulumiEstimateCmd.Flags().StringVarP(&pulumiEstimateOutput, "output", "o", "table", "Output format: table or json")
+
+	// Guardrail flags — turn the estimate into a CI gate.
+	pulumiEstimateCmd.Flags().Float64Var(&pulumiEstimateBudget, "budget", 0, "Fail if the monthly total exceeds this absolute budget (USD)")
+	pulumiEstimateCmd.Flags().StringVar(&pulumiEstimateBaseline, "baseline", "", "Path to a previous estimate JSON (e.g. base branch) to enable diff-based guardrails")
+	pulumiEstimateCmd.Flags().Float64Var(&pulumiEstimateMaxIncrease, "max-increase", 0, "Fail if the cost increase over --baseline exceeds this amount (USD)")
+	pulumiEstimateCmd.Flags().Float64Var(&pulumiEstimateMaxIncreasePct, "max-increase-pct", 0, "Fail if the cost increase over --baseline exceeds this percentage")
+	pulumiEstimateCmd.Flags().BoolVar(&pulumiEstimateNoFail, "no-fail", false, "Report guardrail breaches but always exit 0 (warn-only mode)")
 }
 
 // pulumiYAML is the minimal subset of Pulumi.yaml we need.
@@ -323,13 +345,116 @@ func runPulumiEstimate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("estimating resources: %w", estimateError)
 	}
 
+	// Build the guardrail config from flags. Float flags default to 0, so we use
+	// Changed() to distinguish "not set" from an explicit 0.
+	guardrailCfg, err := buildGuardrailConfig(cmd)
+	if err != nil {
+		return err
+	}
+
+	var guardrail *estimate.GuardrailResult
+	if guardrailCfg.Enabled() || guardrailCfg.Baseline != nil {
+		totals := estimate.ComputeTotals(estimatedResources)
+		res := estimate.EvaluateGuardrail(totals, guardrailCfg)
+		guardrail = &res
+	}
+
 	if jsonMode {
-		estimate.PrintResultsJSON(estimatedResources)
+		estimate.PrintResultsJSONWithGuardrail(estimatedResources, guardrail)
 	} else {
 		estimate.PrintResults(estimatedResources)
+		if guardrail != nil {
+			printGuardrailVerdict(*guardrail)
+		}
+	}
+
+	// Drive the exit code: a real breach (thresholds configured and not passed)
+	// returns a sentinel error mapped to exit code 2 in Execute(), unless the
+	// user opted into warn-only mode with --no-fail.
+	if guardrail != nil && !guardrail.Passed && guardrailCfg.Enabled() && !pulumiEstimateNoFail {
+		return &guardrailBreachError{breaches: guardrail.Breaches}
 	}
 
 	return nil
+}
+
+// buildGuardrailConfig assembles a GuardrailConfig from the parsed flags,
+// loading the baseline estimate JSON when --baseline is given.
+func buildGuardrailConfig(cmd *cobra.Command) (estimate.GuardrailConfig, error) {
+	var cfg estimate.GuardrailConfig
+
+	if cmd.Flags().Changed("budget") {
+		v := pulumiEstimateBudget
+		cfg.Budget = &v
+	}
+	if cmd.Flags().Changed("max-increase") {
+		v := pulumiEstimateMaxIncrease
+		cfg.MaxIncrease = &v
+	}
+	if cmd.Flags().Changed("max-increase-pct") {
+		v := pulumiEstimateMaxIncreasePct
+		cfg.MaxIncreasePct = &v
+	}
+
+	if strings.TrimSpace(pulumiEstimateBaseline) != "" {
+		baseline, err := readBaselineMonthlyTotal(pulumiEstimateBaseline)
+		if err != nil {
+			return cfg, fmt.Errorf("reading --baseline: %w", err)
+		}
+		cfg.Baseline = &baseline
+	}
+
+	return cfg, nil
+}
+
+// readBaselineMonthlyTotal extracts totals.monthly_total from a previously saved
+// estimate JSON document (the output of `pulumi estimate -o json`).
+func readBaselineMonthlyTotal(path string) (float64, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	var doc struct {
+		Totals struct {
+			MonthlyTotal string `json:"monthly_total"`
+		} `json:"totals"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return 0, fmt.Errorf("parsing baseline JSON: %w", err)
+	}
+	if strings.TrimSpace(doc.Totals.MonthlyTotal) == "" {
+		return 0, fmt.Errorf("baseline JSON has no totals.monthly_total")
+	}
+	v, err := strconv.ParseFloat(doc.Totals.MonthlyTotal, 64)
+	if err != nil {
+		return 0, fmt.Errorf("baseline monthly_total %q is not a number: %w", doc.Totals.MonthlyTotal, err)
+	}
+	return v, nil
+}
+
+// printGuardrailVerdict writes a coloured pass/fail summary to stderr, keeping
+// stdout reserved for the estimate tables.
+func printGuardrailVerdict(g estimate.GuardrailResult) {
+	if g.Passed {
+		st := lipgloss.NewStyle().Foreground(lipgloss.Color("#22C55E")).Bold(true)
+		fmt.Fprintln(os.Stderr, st.Render(fmt.Sprintf("✓ GUARDRAIL PASSED — monthly $%.2f", g.MonthlyTotal)))
+		return
+	}
+	st := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Bold(true)
+	fmt.Fprintln(os.Stderr, st.Render("✗ GUARDRAIL FAILED:"))
+	for _, b := range g.Breaches {
+		fmt.Fprintln(os.Stderr, st.Render("  • "+b))
+	}
+}
+
+// guardrailBreachError signals that a cost guardrail threshold was exceeded.
+// Execute() maps it to exit code 2 (distinct from 1 = runtime error).
+type guardrailBreachError struct {
+	breaches []string
+}
+
+func (e *guardrailBreachError) Error() string {
+	return "cost guardrail breached: " + strings.Join(e.breaches, "; ")
 }
 
 func detectRuntime(dir string) (string, string, map[string]string, error) {

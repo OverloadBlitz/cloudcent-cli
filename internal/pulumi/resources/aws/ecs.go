@@ -169,8 +169,9 @@ func DecodeECSService(record resources.ResourceRecord, region, inputsJSON string
 		return decodeFargateService(record, region, inputsJSON, cpuArch, osFamily, props)
 	case "EXTERNAL":
 		return decodeExternalService(record, region, inputsJSON, props)
+	case "EC2":
+		return decodeEC2LaunchTypeService(record, region, inputsJSON, props)
 	default:
-		// EC2 launch type: costs belong to the underlying EC2 instances.
 		return []resources.DecodedResource{
 			{
 				Provider:   ecsProvider,
@@ -209,11 +210,15 @@ func decodeFargateService(
 		cpuArch = "X86_64"
 	}
 
-	cpuAttrs := map[string]string{
-		"cputype": "perCPU",
-	}
-	memAttrs := map[string]string{
-		"memorytype": "perGB",
+	// Attrs are used for client-side matching. X86_64 Fargate pricing items do not
+	// carry cpuArchitecture in their API response attributes, so we only include it
+	// for ARM64 (where the items do carry the attribute). QueryAttrs always include
+	// cpuArchitecture so the server filters to the correct arch.
+	cpuAttrs := map[string]string{"cputype": "perCPU"}
+	memAttrs := map[string]string{"memorytype": "perGB"}
+	if cpuArch == "ARM64" {
+		cpuAttrs["cpuArchitecture"] = cpuArch
+		memAttrs["cpuArchitecture"] = cpuArch
 	}
 
 	// Compute per-hour quantity multipliers from taskCpu / taskMemory / desiredCount.
@@ -227,8 +232,15 @@ func decodeFargateService(
 
 	cpuEntry := ecsEntry(record, region, inputsJSON, "CPU", "Compute", cpuAttrs, props)
 	cpuEntry.HourlyQty = cpuHourlyQty
+	cpuEntry.HourlyQtyLabel = buildFargateQtyLabel(props["taskCpu"], count)
+	cpuEntry.QueryAttrs = copyProps(cpuEntry.Attrs)
+	cpuEntry.QueryAttrs["cpuArchitecture"] = cpuArch
+
 	memEntry := ecsEntry(record, region, inputsJSON, "Memory", "Compute", memAttrs, props)
 	memEntry.HourlyQty = memHourlyQty
+	memEntry.HourlyQtyLabel = buildFargateQtyLabel(props["taskMemory"], count)
+	memEntry.QueryAttrs = copyProps(memEntry.Attrs)
+	memEntry.QueryAttrs["cpuArchitecture"] = cpuArch
 
 	results := []resources.DecodedResource{cpuEntry, memEntry}
 
@@ -313,6 +325,30 @@ func decodeExternalService(
 	}
 }
 
+// decodeEC2LaunchTypeService produces a vCPU pricing query for an EC2-launched
+// ECS service. AWS charges per vCPU hour under productFamily "Compute Metering"
+// (usagetype ECS-EC2-vCPU-Hours), distinct from Fargate's "Compute" family.
+// No cpuArchitecture filter is applied because the EC2 pricing entry omits it.
+func decodeEC2LaunchTypeService(
+	record resources.ResourceRecord,
+	region, inputsJSON string,
+	props map[string]string,
+) []resources.DecodedResource {
+	cpuAttrs := map[string]string{
+		"cputype": "perCPU",
+	}
+
+	cpuQty := fargateVCPUs(props["taskCpu"])
+	count := fargateDesiredCount(record)
+	cpuHourlyQty := cpuQty.Mul(count)
+
+	entry := ecsEntry(record, region, inputsJSON, "CPU", "Compute Metering", cpuAttrs, props)
+	entry.HourlyQty = cpuHourlyQty
+	entry.HourlyQtyLabel = buildFargateQtyLabel(props["taskCpu"], count)
+
+	return []resources.DecodedResource{entry}
+}
+
 // ---------------------------------------------------------------------------
 // ExpressGatewayService
 // ---------------------------------------------------------------------------
@@ -347,6 +383,19 @@ func DecodeECSExpressGatewayService(record resources.ResourceRecord, region, inp
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// buildFargateQtyLabel returns a display label like "256 × 3 tasks" for the
+// totals table, combining the raw Pulumi value (millicpu or MiB) with the task count.
+func buildFargateQtyLabel(rawVal string, count decimal.Decimal) string {
+	if rawVal == "" {
+		return ""
+	}
+	c := count.String()
+	if c == "1" {
+		return rawVal
+	}
+	return rawVal + " × " + c + " tasks"
+}
 
 // mockedProp safely reads a value from MockedProperties, returning "" if absent.
 func mockedProp(record resources.ResourceRecord, key string) string {

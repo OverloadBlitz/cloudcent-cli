@@ -42,8 +42,8 @@
       "props": { "type": "aws:lb/loadBalancer:LoadBalancer" },
       "is_usage_based": true,
       "unit_rate": "0.008",
-      "usage": "1000000",
-      "cost_monthly": "8000"
+      "usage": "1000",
+      "cost_monthly": "8"
     },
     {
       "name": "web",
@@ -54,16 +54,18 @@
       "name": "app-svc",
       "sub_label": "CPU",
       "props": { "type": "aws:ecs/service:Service" },
-      "on_demand_rate": "0.024285"
+      "on_demand_rate": "0.04048",
+      "cost_monthly": "22.16"
     },
     {
       "name": "app-svc",
       "sub_label": "Memory",
       "props": { "type": "aws:ecs/service:Service" },
-      "on_demand_rate": "0.00534"
+      "on_demand_rate": "0.004445",
+      "cost_monthly": "4.87"
     }
   ],
   "totals": {
-    "monthly_total": "8038.05125"
+    "monthly_total": "51.46"
   }
 }

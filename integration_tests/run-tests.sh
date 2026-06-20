@@ -13,12 +13,12 @@ TESTDATA_DRAWIO="$SCRIPT_DIR/testdata/drawio-diagrams"
 
 PULUMI_WHITELIST=(
   aws-py-webserver
-  # aws-py-appsync
-  # aws-py-fargate
-  # aws-py-s3-folder
+  aws-py-appsync
+  aws-py-fargate
+  aws-py-s3-folder
   aws-py-apigatewayv2-http-api-quickcreate
   # aws-py-resources
-  # aws-py-voting-app
+  aws-py-voting-app
   azure-py-webserver
 )
 

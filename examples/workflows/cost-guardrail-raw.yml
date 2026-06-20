@@ -1,0 +1,65 @@
+# PR cost guardrail WITHOUT the composite action — full control over each step.
+#
+# Use this when you want to manage the CLI install, the base-branch diff, and the
+# guardrail flags yourself. The CLI exit codes are: 0 = pass, 1 = error,
+# 2 = guardrail breached.
+name: Cost Guardrail (raw)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cost-guardrail:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_PATH: infra
+      CLOUDCENT_API_KEY: ${{ secrets.CLOUDCENT_API_KEY }}
+      CLOUDCENT_CLI_ID: ${{ secrets.CLOUDCENT_CLI_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Pulumi CLI
+        run: |
+          curl -fsSL https://get.pulumi.com | sh
+          echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
+
+      - name: Install uv
+        run: |
+          curl -fsSL https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install cloudcent CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/OverloadBlitz/cloudcent-cli/main/install.sh | sudo bash
+
+      - name: Download pricing metadata
+        run: cloudcent metadata refresh
+
+      - name: Estimate base branch
+        id: base
+        run: |
+          set +e
+          WT="$(mktemp -d)"
+          git worktree add --detach "$WT" "${{ github.event.pull_request.base.sha }}"
+          if [ -f "$WT/$PROJECT_PATH/Pulumi.yaml" ]; then
+            cloudcent pulumi estimate "$WT/$PROJECT_PATH" -o json > /tmp/base.json \
+              && echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+          git worktree remove --force "$WT" || true
+
+      - name: Estimate head & enforce guardrail
+        run: |
+          ARGS=(--budget 500)
+          if [ "${{ steps.base.outputs.available }}" = "true" ]; then
+            ARGS+=(--baseline /tmp/base.json --max-increase 50 --max-increase-pct 20)
+          fi
+          cloudcent pulumi estimate "$PROJECT_PATH" "${ARGS[@]}" -o json | tee /tmp/head.json
+          # Exit code: 0 = pass, 2 = breach (the run fails automatically on non-zero).
