@@ -1,9 +1,7 @@
-name: "CloudCent Cost Guardrail"
+name: "cloudcent-cicd"
 description: >-
-  Estimate the cloud cost of a Pulumi project with no cloud credentials and gate
-  pull requests on an absolute budget and/or the cost increase versus the base
-  branch. Posts a sticky cost comment on the PR.
-author: "CloudCent"
+  Estimate the cloud cost of a Pulumi project
+author: "OverloadBlitz"
 branding:
   icon: "dollar-sign"
   color: "green"
