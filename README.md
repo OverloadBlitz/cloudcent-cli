@@ -13,7 +13,6 @@
   - [PowerShell (Windows)](#powershell-windows)
 - [Quick Start](#quick-start)
 - [Examples](#example)
-  - [Draw.io](#drawio)
   - [Pulumi](#pulumi)
 - [Supported Cloud Resources](#supported-cloud-resources)
 - [CLI Commands](#cli-commands)
@@ -177,7 +176,6 @@ Data files:
 ## Integration Tests
 Currently, I am using the following repositories as integration test cases:
 
-- [jgraph/drawio-diagrams](https://github.com/jgraph/drawio-diagrams)
 - [pulumi/examples](https://github.com/pulumi/examples)
 
 These test cases are located under:
