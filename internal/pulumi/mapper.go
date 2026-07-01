@@ -263,6 +263,32 @@ func decodeFromMapping(record resources.ResourceRecord, mapping api.PulumiResour
 		return awsdecode.DecodeClassicELB(record, region, inputsJSON)
 	case "azure-native:compute:VirtualMachine":
 		return azuredecode.DecodeVirtualMachine(record, region, inputsJSON)
+	case "aws:rds/instance:Instance":
+		return awsdecode.DecodeRDSInstance(record, region, inputsJSON)
+	case "aws:redshift/cluster:Cluster":
+		return awsdecode.DecodeRedshiftCluster(record, region, inputsJSON)
+	case "aws:glue/job:Job":
+		return awsdecode.DecodeGlueJob(record, region, inputsJSON)
+	case "aws:glue/crawler:Crawler":
+		return awsdecode.DecodeGlueCrawler(record, region, inputsJSON)
+	case "aws:secretsmanager/secret:Secret":
+		return awsdecode.DecodeSecretsManagerSecret(record, region, inputsJSON)
+	case "aws:cloudfront/distribution:Distribution":
+		return awsdecode.DecodeCloudFrontDistribution(record, region, inputsJSON)
+	case "aws:efs/fileSystem:FileSystem":
+		return awsdecode.DecodeEFSFileSystem(record, region, inputsJSON)
+	case "aws:athena/workgroup:WorkGroup":
+		return awsdecode.DecodeAthenaWorkGroup(record, region, inputsJSON)
+	case "aws:synthetics/canary:Canary":
+		return awsdecode.DecodeCanary(record, region, inputsJSON)
+	case "aws:eks/nodeGroup:NodeGroup":
+		return awsdecode.DecodeEKSNodeGroup(record, region, inputsJSON)
+	case "azure-native:containerinstance:ContainerGroup":
+		return azuredecode.DecodeContainerGroup(record, region, inputsJSON)
+	case "azure-native:documentdb:DatabaseAccount":
+		return azuredecode.DecodeCosmosDBAccount(record, region, inputsJSON)
+	case "azure-native:storage:StorageAccount":
+		return azuredecode.DecodeStorageAccount(record, region, inputsJSON)
 	}
 
 	// Single-resource path: apply any derived attrs then return.

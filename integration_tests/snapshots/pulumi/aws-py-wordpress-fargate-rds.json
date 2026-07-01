@@ -1,0 +1,455 @@
+{
+    "resources": [
+        {
+            "name": "db_password",
+            "product": "random:index/randomPassword:RandomPassword",
+            "props": {
+                "length": "16",
+                "overrideSpecial": "_%@",
+                "special": "true",
+                "type": "random:index/randomPassword:RandomPassword"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "wp-example-net",
+            "product": "custom:resource:VPC",
+            "props": {
+                "type": "custom:resource:VPC"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "wp-example-be",
+            "product": "custom:resource:Backend",
+            "props": {
+                "type": "custom:resource:Backend"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "wp-example-fe",
+            "product": "custom:resource:Frontend",
+            "props": {
+                "type": "custom:resource:Frontend"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "wp-example-net-vpc",
+            "product": "aws:ec2/vpc:Vpc",
+            "props": {
+                "type": "aws:ec2/vpc:Vpc"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-ecs",
+            "product": "aws:ecs/cluster:Cluster",
+            "props": {
+                "type": "aws:ecs/cluster:Cluster"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-task-role",
+            "product": "aws:iam/role:Role",
+            "props": {
+                "type": "aws:iam/role:Role"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-net-subnet-us-east-1a",
+            "product": "aws:ec2/subnet:Subnet",
+            "props": {
+                "type": "aws:ec2/subnet:Subnet"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-net-igw",
+            "product": "aws:ec2/internetGateway:InternetGateway",
+            "props": {
+                "type": "aws:ec2/internetGateway:InternetGateway"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-net-subnet-us-east-1b",
+            "product": "aws:ec2/subnet:Subnet",
+            "props": {
+                "type": "aws:ec2/subnet:Subnet"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-net-rds-sg",
+            "product": "aws:ec2/securityGroup:SecurityGroup",
+            "props": {
+                "type": "aws:ec2/securityGroup:SecurityGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-net-fe-sg",
+            "product": "aws:ec2/securityGroup:SecurityGroup",
+            "props": {
+                "type": "aws:ec2/securityGroup:SecurityGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-app-tg",
+            "product": "aws:lb/targetGroup:TargetGroup",
+            "props": {
+                "type": "aws:lb/targetGroup:TargetGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-task-policy",
+            "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+            "props": {
+                "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-net-rt",
+            "product": "aws:ec2/routeTable:RouteTable",
+            "props": {
+                "type": "aws:ec2/routeTable:RouteTable"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-be-sng",
+            "product": "aws:rds/subnetGroup:SubnetGroup",
+            "props": {
+                "type": "aws:rds/subnetGroup:SubnetGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-route-table-assoc-us-east-1a",
+            "product": "aws:ec2/routeTableAssociation:RouteTableAssociation",
+            "props": {
+                "type": "aws:ec2/routeTableAssociation:RouteTableAssociation"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-route-table-assoc-us-east-1b",
+            "product": "aws:ec2/routeTableAssociation:RouteTableAssociation",
+            "props": {
+                "type": "aws:ec2/routeTableAssociation:RouteTableAssociation"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-listener",
+            "product": "aws:lb/listener:Listener",
+            "props": {
+                "type": "aws:lb/listener:Listener"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-app-task",
+            "product": "aws:ecs/taskDefinition:TaskDefinition",
+            "props": {
+                "type": "aws:ecs/taskDefinition:TaskDefinition"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "wp-example-fe-alb",
+            "on_demand_rate": "0.0225",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.0225",
+                    "unit": "Hrs",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws ELB",
+            "props": {
+                "loadBalancerType": "application",
+                "type": "aws:lb/loadBalancer:LoadBalancer"
+            },
+            "region_fallback": true,
+            "sub_label": "Hourly"
+        },
+        {
+            "cost_monthly": "8",
+            "is_usage_based": true,
+            "name": "wp-example-fe-alb",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.008",
+                    "unit": "LCU-Hrs",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws ELB",
+            "props": {
+                "loadBalancerType": "application",
+                "type": "aws:lb/loadBalancer:LoadBalancer"
+            },
+            "region_fallback": true,
+            "sub_label": "LCU",
+            "unit_rate": "0.008",
+            "usage_default": true,
+            "usage_qty": 1000,
+            "usage_unit": "LCU-Hrs"
+        },
+        {
+            "name": "wp-example-be-rds",
+            "on_demand_rate": "0.017",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.017",
+                    "unit": "Hrs",
+                    "upfront_fee": "0"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "98"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "210"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.0041",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "107"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.0057",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "50"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.012",
+                    "term": "1yr",
+                    "unit": "Hrs"
+                }
+            ],
+            "product": "aws Database Instance",
+            "props": {
+                "deploymentOption": "Single-AZ",
+                "engine": "MySQL",
+                "instanceClass": "db.t3.micro",
+                "storageType": "gp2"
+            },
+            "region_fallback": true,
+            "sub_label": "Instance"
+        },
+        {
+            "cost_monthly": "2.3",
+            "is_usage_based": true,
+            "name": "wp-example-be-rds",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.115",
+                    "unit": "GB-Mo",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws Database Instance",
+            "props": {
+                "deploymentOption": "Single-AZ",
+                "engine": "MySQL",
+                "instanceClass": "db.t3.micro",
+                "storageType": "gp2"
+            },
+            "region_fallback": true,
+            "sub_label": "Storage",
+            "unit_rate": "0.115",
+            "usage_default": true,
+            "usage_qty": 20,
+            "usage_unit": "GB-Mo"
+        },
+        {
+            "hourly_qty": "0.25",
+            "name": "wp-example-fe-app-svc",
+            "on_demand_rate": "0.04048",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.04048",
+                    "unit": "hours",
+                    "upfront_fee": "0"
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.0194304",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.02024",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.022264",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.0295504",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.03036",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.032384",
+                    "term": "1yr",
+                    "unit": ""
+                }
+            ],
+            "product": "aws",
+            "props": {
+                "launchType": "FARGATE",
+                "region": "",
+                "taskCpu": "256",
+                "taskMemory": "512",
+                "type": "aws:ecs/service:Service"
+            },
+            "region_fallback": true,
+            "sub_label": "CPU"
+        },
+        {
+            "hourly_qty": "0.5",
+            "name": "wp-example-fe-app-svc",
+            "on_demand_rate": "0.004445",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.004445",
+                    "unit": "hours",
+                    "upfront_fee": "0"
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.0021336",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.0022225",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.00244475",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.00324485",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.00333375",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.003556",
+                    "term": "1yr",
+                    "unit": ""
+                }
+            ],
+            "product": "aws",
+            "props": {
+                "launchType": "FARGATE",
+                "region": "",
+                "taskCpu": "256",
+                "taskMemory": "512",
+                "type": "aws:ecs/service:Service"
+            },
+            "region_fallback": true,
+            "sub_label": "Memory"
+        }
+    ],
+    "totals": {
+        "hourly_rate": "0.0518425",
+        "monthly_hourly": "37.845025",
+        "monthly_total": "48.145025",
+        "monthly_usage": "10.3"
+    }
+}

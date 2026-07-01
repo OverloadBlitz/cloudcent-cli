@@ -1,0 +1,60 @@
+{
+    "resources": [
+        {
+            "name": "resourceGroup",
+            "product": "azure-native:resources:ResourceGroup",
+            "props": {
+                "type": "azure-native:resources:ResourceGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "hourly_qty": "1",
+            "name": "containerGroup",
+            "on_demand_rate": "0.00001125000000000001",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.00001125000000000001",
+                    "unit": "Hrs"
+                }
+            ],
+            "product": "azure Container",
+            "props": {
+                "cpu": "1",
+                "memoryGb": "1.5",
+                "osType": "Linux"
+            },
+            "region_fallback": true,
+            "sub_label": "CPU"
+        },
+        {
+            "hourly_qty": "1.5",
+            "name": "containerGroup",
+            "on_demand_rate": "0.00000118",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.00000118",
+                    "unit": "Hrs"
+                }
+            ],
+            "product": "azure Container",
+            "props": {
+                "cpu": "1",
+                "memoryGb": "1.5",
+                "osType": "Linux"
+            },
+            "region_fallback": true,
+            "sub_label": "Memory"
+        }
+    ],
+    "totals": {
+        "hourly_rate": "0.00001302000000000001",
+        "monthly_hourly": "0.0095046000000000073",
+        "monthly_total": "0.0095046000000000073",
+        "monthly_usage": "0"
+    }
+}

@@ -1,0 +1,393 @@
+{
+    "resources": [
+        {
+            "name": "eks-iam-role",
+            "product": "aws:iam/role:Role",
+            "props": {
+                "type": "aws:iam/role:Role"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "ec2-nodegroup-iam-role",
+            "product": "aws:iam/role:Role",
+            "props": {
+                "type": "aws:iam/role:Role"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-vpc",
+            "product": "aws:ec2/vpc:Vpc",
+            "props": {
+                "type": "aws:ec2/vpc:Vpc"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-service-policy-attachment",
+            "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+            "props": {
+                "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-cluster-policy-attachment",
+            "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+            "props": {
+                "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-workernode-policy-attachment",
+            "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+            "props": {
+                "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-cni-policy-attachment",
+            "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+            "props": {
+                "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "ec2-container-ro-policy-attachment",
+            "product": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+            "props": {
+                "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-ig",
+            "product": "aws:ec2/internetGateway:InternetGateway",
+            "props": {
+                "type": "aws:ec2/internetGateway:InternetGateway"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-subnet-us-east-2a",
+            "product": "aws:ec2/subnet:Subnet",
+            "props": {
+                "type": "aws:ec2/subnet:Subnet"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-subnet-us-east-2b",
+            "product": "aws:ec2/subnet:Subnet",
+            "props": {
+                "type": "aws:ec2/subnet:Subnet"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-subnet-us-east-2c",
+            "product": "aws:ec2/subnet:Subnet",
+            "props": {
+                "type": "aws:ec2/subnet:Subnet"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-cluster-sg",
+            "product": "aws:ec2/securityGroup:SecurityGroup",
+            "props": {
+                "type": "aws:ec2/securityGroup:SecurityGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-route-table",
+            "product": "aws:ec2/routeTable:RouteTable",
+            "props": {
+                "type": "aws:ec2/routeTable:RouteTable"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-route-table-assoc-us-east-2a",
+            "product": "aws:ec2/routeTableAssociation:RouteTableAssociation",
+            "props": {
+                "type": "aws:ec2/routeTableAssociation:RouteTableAssociation"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-route-table-assoc-us-east-2b",
+            "product": "aws:ec2/routeTableAssociation:RouteTableAssociation",
+            "props": {
+                "type": "aws:ec2/routeTableAssociation:RouteTableAssociation"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "vpc-route-table-assoc-us-east-2c",
+            "product": "aws:ec2/routeTableAssociation:RouteTableAssociation",
+            "props": {
+                "type": "aws:ec2/routeTableAssociation:RouteTableAssociation"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "eks-cluster",
+            "on_demand_rate": "0.1",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.1",
+                    "unit": "hours",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws",
+            "props": {
+                "operation": "CreateOperation",
+                "productFamily": "Compute",
+                "servicecode": "AmazonEKS",
+                "tiertype": "HAStandard",
+                "type": "aws:eks/cluster:Cluster"
+            }
+        },
+        {
+            "hourly_qty": "2",
+            "name": "eks-node-group",
+            "on_demand_rate": "0.0416",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.0416",
+                    "unit": "Hrs",
+                    "upfront_fee": "0"
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.0187",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.0191",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.0206",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.028",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.0286",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "ComputeSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.03",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "EC2InstanceSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.0156",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "EC2InstanceSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.0166",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "EC2InstanceSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.018",
+                    "term": "3yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "EC2InstanceSavingsPlans",
+                    "purchase_option": "All Upfront",
+                    "rate_per_hr": "0.0243",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "EC2InstanceSavingsPlans",
+                    "purchase_option": "Partial Upfront",
+                    "rate_per_hr": "0.0248",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "EC2InstanceSavingsPlans",
+                    "purchase_option": "No Upfront",
+                    "rate_per_hr": "0.0261",
+                    "term": "1yr",
+                    "unit": ""
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "411"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "213"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "convertible",
+                    "rate_per_hr": "0",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "245"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "convertible",
+                    "rate_per_hr": "0",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "492"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.0083",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "219"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "convertible",
+                    "rate_per_hr": "0.0096",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "251"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.0124",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "109"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "convertible",
+                    "rate_per_hr": "0.0143",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "125"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.018",
+                    "term": "3yr",
+                    "unit": "Hrs"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "convertible",
+                    "rate_per_hr": "0.0206",
+                    "term": "3yr",
+                    "unit": "Hrs"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.0261",
+                    "term": "1yr",
+                    "unit": "Hrs"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "convertible",
+                    "rate_per_hr": "0.03",
+                    "term": "1yr",
+                    "unit": "Hrs"
+                },
+                {
+                    "is_current": false,
+                    "model": "spot",
+                    "rate_per_hr": "0.012",
+                    "unit": ""
+                }
+            ],
+            "product": "aws Kubernetes",
+            "props": {
+                "desiredSize": "2",
+                "instanceType": "t3.medium"
+            },
+            "sub_label": "Nodes"
+        }
+    ],
+    "totals": {
+        "hourly_rate": "0.1832",
+        "monthly_hourly": "133.736",
+        "monthly_total": "133.736",
+        "monthly_usage": "0"
+    }
+}

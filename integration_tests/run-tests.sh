@@ -18,6 +18,13 @@ PULUMI_WHITELIST=(
   # aws-py-resources
   aws-py-voting-app
   azure-py-webserver
+  aws-py-wordpress-fargate-rds
+  aws-py-eks
+  aws-py-redshift-glue-etl
+  aws-py-secrets-manager
+  azure-py-aci
+  azure-py-cosmosdb-logicapp
+  azure-py-static-website
 )
 
 # ── defaults ────────────────────────────────────────────────────────────────
