@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	//APIBaseURL = "https://api.cloudcent.io"
-	APIBaseURL = "http://localhost:8080"
+	APIBaseURL = "https://api.cloudcent.io"
+	//APIBaseURL = "http://localhost:8080"
 	CLIBaseURL = "https://cli.cloudcent.io"
 )
 
