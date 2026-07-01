@@ -85,6 +85,30 @@ var serviceUsageDefaults = map[string]float64{
 	"DynamoDB/Kinesis Data Capture": 1_000_000,
 	"DynamoDB/Full Export":          100, // GB
 	"DynamoDB/Incremental Export":   10,  // GB
+
+	// RDS — storage GB-Mo
+	"Database Instance/Storage": 20,
+
+	// Secrets Manager — per-secret-month + API calls
+	"other/Secret":       1,
+	"other/API Requests": 10_000,
+
+	// Glue — DPU-hours
+	"other/Job Run":     100,
+	"other/Crawler Run": 10,
+
+	// EFS — GB-Mo (matched by rawType; SubLabel is empty)
+	"aws:efs/fileSystem:FileSystem": 25,
+
+	// Athena — TB scanned
+	"other/Data Scanned": 1,
+
+	// CloudFront — GB / requests
+	"other/Data Transfer": 1_000,
+	"other/Requests":      1_000_000,
+
+	// Azure Storage — GB-Mo (matched by bare service; SubLabel is empty)
+	"Object Storage": 25,
 }
 
 // hourlyUnits are unit strings that indicate time-based (per-hour) pricing.

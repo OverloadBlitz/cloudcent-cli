@@ -1,0 +1,416 @@
+{
+    "resources": [
+        {
+            "name": "vpc",
+            "product": "aws:ec2/vpc:Vpc",
+            "props": {
+                "type": "aws:ec2/vpc:Vpc"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "glue-catalog-db",
+            "product": "aws:glue/catalogDatabase:CatalogDatabase",
+            "props": {
+                "type": "aws:glue/catalogDatabase:CatalogDatabase"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "redshift-role",
+            "product": "aws:iam/role:Role",
+            "props": {
+                "type": "aws:iam/role:Role"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "glue-role",
+            "product": "aws:iam/role:Role",
+            "props": {
+                "type": "aws:iam/role:Role"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "subnet",
+            "product": "aws:ec2/subnet:Subnet",
+            "props": {
+                "type": "aws:ec2/subnet:Subnet"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "subnet-group",
+            "product": "aws:redshift/subnetGroup:SubnetGroup",
+            "props": {
+                "type": "aws:redshift/subnetGroup:SubnetGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "glue-redshift-connection",
+            "product": "aws:glue/connection:Connection",
+            "props": {
+                "type": "aws:glue/connection:Connection"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "trigger",
+            "product": "aws:glue/trigger:Trigger",
+            "props": {
+                "type": "aws:glue/trigger:Trigger"
+            },
+            "status": "free resource"
+        },
+        {
+            "cost_monthly": "0.575",
+            "is_usage_based": true,
+            "name": "events",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.023",
+                    "tiers": [
+                        {
+                            "end_range": "51200",
+                            "price": "0.0230000000",
+                            "start_range": "0"
+                        },
+                        {
+                            "end_range": "512000",
+                            "price": "0.0220000000",
+                            "start_range": "51200"
+                        },
+                        {
+                            "end_range": "Inf",
+                            "price": "0.0210000000",
+                            "start_range": "512000"
+                        }
+                    ],
+                    "unit": "GB-Mo",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "type": "aws:s3/bucket:Bucket"
+            },
+            "sub_label": "Storage",
+            "unit_rate": "0.0230000000",
+            "usage_default": true,
+            "usage_qty": 25,
+            "usage_unit": "GB-Mo"
+        },
+        {
+            "cost_monthly": "0.05",
+            "is_usage_based": true,
+            "name": "events",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.000005",
+                    "unit": "Requests",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "type": "aws:s3/bucket:Bucket"
+            },
+            "sub_label": "Requests-PUT",
+            "unit_rate": "0.000005",
+            "usage_default": true,
+            "usage_qty": 10000,
+            "usage_unit": "Requests"
+        },
+        {
+            "cost_monthly": "0.04",
+            "is_usage_based": true,
+            "name": "events",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.0000004",
+                    "unit": "Requests",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "type": "aws:s3/bucket:Bucket"
+            },
+            "sub_label": "Requests-GET",
+            "unit_rate": "0.0000004",
+            "usage_default": true,
+            "usage_qty": 100000,
+            "usage_unit": "Requests"
+        },
+        {
+            "cost_monthly": "0.575",
+            "is_usage_based": true,
+            "name": "glue-job-bucket",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.023",
+                    "tiers": [
+                        {
+                            "end_range": "51200",
+                            "price": "0.0230000000",
+                            "start_range": "0"
+                        },
+                        {
+                            "end_range": "512000",
+                            "price": "0.0220000000",
+                            "start_range": "51200"
+                        },
+                        {
+                            "end_range": "Inf",
+                            "price": "0.0210000000",
+                            "start_range": "512000"
+                        }
+                    ],
+                    "unit": "GB-Mo",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "type": "aws:s3/bucket:Bucket"
+            },
+            "sub_label": "Storage",
+            "unit_rate": "0.0230000000",
+            "usage_default": true,
+            "usage_qty": 25,
+            "usage_unit": "GB-Mo"
+        },
+        {
+            "cost_monthly": "0.05",
+            "is_usage_based": true,
+            "name": "glue-job-bucket",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.000005",
+                    "unit": "Requests",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "type": "aws:s3/bucket:Bucket"
+            },
+            "sub_label": "Requests-PUT",
+            "unit_rate": "0.000005",
+            "usage_default": true,
+            "usage_qty": 10000,
+            "usage_unit": "Requests"
+        },
+        {
+            "cost_monthly": "0.04",
+            "is_usage_based": true,
+            "name": "glue-job-bucket",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.0000004",
+                    "unit": "Requests",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "type": "aws:s3/bucket:Bucket"
+            },
+            "sub_label": "Requests-GET",
+            "unit_rate": "0.0000004",
+            "usage_default": true,
+            "usage_qty": 100000,
+            "usage_unit": "Requests"
+        },
+        {
+            "name": "s3-vpc-endpoint",
+            "product": "aws",
+            "props": {
+                "operation": "CreateVpcEndpoint",
+                "servicecode": "AmazonVPC",
+                "type": "aws:ec2/vpcEndpoint:VpcEndpoint"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "cost_monthly": "0.575",
+            "is_usage_based": true,
+            "name": "glue-job.py",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.023",
+                    "tiers": [
+                        {
+                            "end_range": "51200",
+                            "price": "0.0230000000",
+                            "start_range": "0"
+                        },
+                        {
+                            "end_range": "512000",
+                            "price": "0.0220000000",
+                            "start_range": "51200"
+                        },
+                        {
+                            "end_range": "Inf",
+                            "price": "0.0210000000",
+                            "start_range": "512000"
+                        }
+                    ],
+                    "unit": "GB-Mo",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws S3",
+            "props": {
+                "bucket": "glue-job-bucket_id",
+                "type": "aws:s3/bucketObject:BucketObject",
+                "volumeType": "Standard"
+            },
+            "sub_label": "Storage",
+            "unit_rate": "0.0230000000",
+            "usage_default": true,
+            "usage_qty": 25,
+            "usage_unit": "GB-Mo"
+        },
+        {
+            "cost_monthly": "4.4",
+            "is_usage_based": true,
+            "name": "glue-crawler",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.44",
+                    "unit": "DPU-Hour",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws other",
+            "props": {
+                "type": "aws:glue/crawler:Crawler"
+            },
+            "sub_label": "Crawler Run",
+            "unit_rate": "0.44",
+            "usage_default": true,
+            "usage_qty": 10,
+            "usage_unit": "DPU-Hour"
+        },
+        {
+            "hourly_qty": "1",
+            "name": "cluster",
+            "on_demand_rate": "1.086",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "1.086",
+                    "unit": "Hrs",
+                    "upfront_fee": "0"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "6279"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "10703"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.214498",
+                    "term": "3yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "5637"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.363813",
+                    "term": "1yr",
+                    "unit": "Hrs",
+                    "upfront_fee": "3187"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.4725",
+                    "term": "3yr",
+                    "unit": "Hrs"
+                },
+                {
+                    "is_current": false,
+                    "model": "Reserved",
+                    "purchase_option": "standard",
+                    "rate_per_hr": "0.7602",
+                    "term": "1yr",
+                    "unit": "Hrs"
+                }
+            ],
+            "product": "aws other",
+            "props": {
+                "nodeType": "ra3.xlplus",
+                "numberOfNodes": "1"
+            }
+        },
+        {
+            "cost_monthly": "44",
+            "is_usage_based": true,
+            "name": "glue-job",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.44",
+                    "unit": "DPU-Hour",
+                    "upfront_fee": "0"
+                }
+            ],
+            "product": "aws other",
+            "props": {
+                "numberOfWorkers": "10",
+                "workerType": "G.1X"
+            },
+            "sub_label": "Job Run",
+            "unit_rate": "0.44",
+            "usage_default": true,
+            "usage_qty": 100,
+            "usage_unit": "DPU-Hour"
+        }
+    ],
+    "totals": {
+        "hourly_rate": "1.086",
+        "monthly_hourly": "792.78",
+        "monthly_total": "843.085",
+        "monthly_usage": "50.305"
+    }
+}

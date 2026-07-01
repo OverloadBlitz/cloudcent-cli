@@ -89,11 +89,13 @@ func TestApplyValueMap(t *testing.T) {
 	}
 }
 
-func TestDecodeRDSWithValueMapping(t *testing.T) {
+// TestDecodeValueMapping tests the generic attribute value-mapping feature using a
+// synthetic resource type (not intercepted by any decoder switch case).
+func TestDecodeValueMapping(t *testing.T) {
 	records := []resources.ResourceRecord{
 		{
-			Type: "aws:rds/instance:Instance",
-			Name: "my-postgres-db",
+			Type: "aws:fakeservice/instance:Instance",
+			Name: "my-db",
 			Inputs: resource.PropertyMap{
 				"instanceClass": resource.NewStringProperty("db.t3.medium"),
 				"engine":        resource.NewStringProperty("postgres"),
@@ -105,7 +107,7 @@ func TestDecodeRDSWithValueMapping(t *testing.T) {
 
 	meta := &api.MetadataResponse{
 		PulumiResources: map[string]api.PulumiResourceDef{
-			"aws:rds/instance:Instance": {
+			"aws:fakeservice/instance:Instance": {
 				Provider: "aws",
 				Product:  "RDS Instance",
 				Attrs: map[string]api.PulumiAttrMapping{
@@ -145,6 +147,60 @@ func TestDecodeRDSWithValueMapping(t *testing.T) {
 	}
 	if d.Region != "us-east-1" {
 		t.Errorf("region = %q, want us-east-1", d.Region)
+	}
+}
+
+// TestDecodeRDSInstance verifies the RDS decoder produces compute+storage sub-resources.
+func TestDecodeRDSInstance(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type: "aws:rds/instance:Instance",
+			Name: "my-db",
+			Inputs: resource.PropertyMap{
+				"instanceClass": resource.NewStringProperty("db.t3.micro"),
+				"engine":        resource.NewStringProperty("mysql"),
+				"storageType":   resource.NewStringProperty("gp2"),
+			},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:rds/instance:Instance": {
+				Provider: "aws",
+				Attrs:    map[string]api.PulumiAttrMapping{"servicecode": {Default: "AmazonRDS"}},
+			},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 2 {
+		t.Fatalf("expected 2 decoded resources (Instance+Storage), got %d", len(decoded))
+	}
+
+	// First resource is the compute entry.
+	compute := decoded[0]
+	if compute.SubLabel != "Instance" {
+		t.Errorf("SubLabel = %q, want Instance", compute.SubLabel)
+	}
+	if compute.Attrs["instanceType"] != "db.t3.micro" {
+		t.Errorf("instanceType = %q, want db.t3.micro", compute.Attrs["instanceType"])
+	}
+	if compute.Attrs["databaseEngine"] != "MySQL" {
+		t.Errorf("databaseEngine = %q, want MySQL", compute.Attrs["databaseEngine"])
+	}
+	if compute.Attrs["deploymentOption"] != "Single-AZ" {
+		t.Errorf("deploymentOption = %q, want Single-AZ", compute.Attrs["deploymentOption"])
+	}
+
+	// Second resource is the storage entry.
+	storage := decoded[1]
+	if storage.SubLabel != "Storage" {
+		t.Errorf("SubLabel = %q, want Storage", storage.SubLabel)
+	}
+	if storage.Attrs["volumeType"] != "General Purpose" {
+		t.Errorf("volumeType = %q, want General Purpose", storage.Attrs["volumeType"])
 	}
 }
 
@@ -538,6 +594,173 @@ func TestConsolidateS3ObjectsMergesAcrossBucketObjectVersions(t *testing.T) {
 	}
 	if decoded[0].Name != "S3 Objects (x2)" {
 		t.Errorf("name = %q, want %q", decoded[0].Name, "S3 Objects (x2)")
+	}
+}
+
+// TestDecodeCloudFrontDistribution verifies the CloudFront decoder emits two
+// usage-based sub-resources (Data Transfer + Requests) with an empty region
+// (CloudFront is a global service).
+func TestDecodeCloudFrontDistribution(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type:             "aws:cloudfront/distribution:Distribution",
+			Name:             "my-cdn",
+			Inputs:           resource.PropertyMap{},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:cloudfront/distribution:Distribution": {
+				Provider: "aws",
+				Attrs:    map[string]api.PulumiAttrMapping{"servicecode": {Default: "AmazonCloudFront"}},
+			},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 2 {
+		t.Fatalf("expected 2 decoded resources (Data Transfer + Requests), got %d", len(decoded))
+	}
+
+	dt := decoded[0]
+	if dt.SubLabel != "Data Transfer" {
+		t.Errorf("SubLabel[0] = %q, want Data Transfer", dt.SubLabel)
+	}
+	if dt.Region != "" {
+		t.Errorf("Region = %q, want empty (global service)", dt.Region)
+	}
+	if dt.Attrs["productFamily"] != "Data Transfer" {
+		t.Errorf("productFamily = %q, want Data Transfer", dt.Attrs["productFamily"])
+	}
+
+	req := decoded[1]
+	if req.SubLabel != "Requests" {
+		t.Errorf("SubLabel[1] = %q, want Requests", req.SubLabel)
+	}
+	if req.Attrs["productFamily"] != "Request" {
+		t.Errorf("productFamily = %q, want Request", req.Attrs["productFamily"])
+	}
+}
+
+// TestDecodeEFSFileSystem verifies the EFS decoder emits a single usage-based
+// storage sub-resource with the correct attrs.
+func TestDecodeEFSFileSystem(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type:             "aws:efs/fileSystem:FileSystem",
+			Name:             "my-efs",
+			Inputs:           resource.PropertyMap{},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:efs/fileSystem:FileSystem": {
+				Provider: "aws",
+				Attrs:    map[string]api.PulumiAttrMapping{"servicecode": {Default: "AmazonEFS"}},
+			},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 decoded resource, got %d", len(decoded))
+	}
+
+	d := decoded[0]
+	if d.Attrs["servicecode"] != "AmazonEFS" {
+		t.Errorf("servicecode = %q, want AmazonEFS", d.Attrs["servicecode"])
+	}
+	if d.Attrs["productFamily"] != "Storage" {
+		t.Errorf("productFamily = %q, want Storage", d.Attrs["productFamily"])
+	}
+	if d.Attrs["storageClass"] != "General Purpose" {
+		t.Errorf("storageClass = %q, want General Purpose", d.Attrs["storageClass"])
+	}
+	if d.Region != "us-east-1" {
+		t.Errorf("region = %q, want us-east-1", d.Region)
+	}
+}
+
+// TestDecodeAthenaWorkGroup verifies the Athena decoder emits a usage-based
+// "Data Scanned" sub-resource priced in TB.
+func TestDecodeAthenaWorkGroup(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type:             "aws:athena/workgroup:WorkGroup",
+			Name:             "primary",
+			Inputs:           resource.PropertyMap{},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:athena/workgroup:WorkGroup": {
+				Provider: "aws",
+				Attrs:    map[string]api.PulumiAttrMapping{"servicecode": {Default: "AmazonAthena"}},
+			},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 decoded resource, got %d", len(decoded))
+	}
+
+	d := decoded[0]
+	if d.SubLabel != "Data Scanned" {
+		t.Errorf("SubLabel = %q, want Data Scanned", d.SubLabel)
+	}
+	if d.Attrs["servicecode"] != "AmazonAthena" {
+		t.Errorf("servicecode = %q, want AmazonAthena", d.Attrs["servicecode"])
+	}
+	if d.Attrs["productFamily"] != "Athena Queries" {
+		t.Errorf("productFamily = %q, want Athena Queries", d.Attrs["productFamily"])
+	}
+	if d.Attrs["usagetype"] != "DataScannedInTB" {
+		t.Errorf("usagetype = %q, want DataScannedInTB", d.Attrs["usagetype"])
+	}
+}
+
+// TestDecodeSyntheticsCanary verifies the Synthetics decoder emits a single
+// usage-based sub-resource (pricing data not yet available in the pipeline).
+func TestDecodeSyntheticsCanary(t *testing.T) {
+	records := []resources.ResourceRecord{
+		{
+			Type:             "aws:synthetics/canary:Canary",
+			Name:             "my-canary",
+			Inputs:           resource.PropertyMap{},
+			MockedProperties: map[string]string{"region": "us-east-1"},
+		},
+	}
+
+	meta := &api.MetadataResponse{
+		PulumiResources: map[string]api.PulumiResourceDef{
+			"aws:synthetics/canary:Canary": {
+				Provider: "aws",
+				Attrs:    map[string]api.PulumiAttrMapping{"servicecode": {Default: "AWSSyntheticsCanary"}},
+			},
+		},
+	}
+
+	decoded := DecodeAllResources(records, meta)
+	if len(decoded) != 1 {
+		t.Fatalf("expected 1 decoded resource, got %d", len(decoded))
+	}
+
+	d := decoded[0]
+	if d.Attrs["servicecode"] != "AWSSyntheticsCanary" {
+		t.Errorf("servicecode = %q, want AWSSyntheticsCanary", d.Attrs["servicecode"])
+	}
+	if d.Attrs["productFamily"] != "CloudWatch Canary Run" {
+		t.Errorf("productFamily = %q, want CloudWatch Canary Run", d.Attrs["productFamily"])
+	}
+	if d.Region != "us-east-1" {
+		t.Errorf("region = %q, want us-east-1", d.Region)
 	}
 }
 

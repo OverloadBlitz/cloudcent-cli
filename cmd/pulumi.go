@@ -502,13 +502,21 @@ func detectPulumiProject(dir string) (pulumiProjectInfo, error) {
 	}
 
 	// Merge template defaults as a fallback: stack config wins, template defaults fill gaps.
+	// Store both the bare key ("clusterNodeType") and the namespaced key
+	// ("aws-py-redshift-glue-etl:clusterNodeType") so that scanned config key
+	// lookups (which use the namespaced form) find the template default value.
 	if len(templateDefaults) > 0 {
 		if configValues == nil {
 			configValues = make(map[string]string)
 		}
+		projectName := string(project.Name)
 		for key, val := range templateDefaults {
 			if _, exists := configValues[key]; !exists {
 				configValues[key] = val
+			}
+			nsKey := projectName + ":" + key
+			if _, exists := configValues[nsKey]; !exists {
+				configValues[nsKey] = val
 			}
 		}
 	}

@@ -1,0 +1,89 @@
+{
+    "resources": [
+        {
+            "name": "resourceGroup",
+            "product": "azure-native:resources:ResourceGroup",
+            "props": {
+                "type": "azure-native:resources:ResourceGroup"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "profile",
+            "product": "azure-native:cdn:Profile",
+            "props": {
+                "type": "azure-native:cdn:Profile"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "staticWebsite",
+            "product": "azure-native:storage:StorageAccountStaticWebsite",
+            "props": {
+                "accountName": "storageaccount",
+                "error404Document": "404.html",
+                "indexDocument": "index.html",
+                "resourceGroupName": "resourceGroup",
+                "type": "azure-native:storage:StorageAccountStaticWebsite"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "endpoint",
+            "product": "azure-native:cdn:Endpoint",
+            "props": {
+                "type": "azure-native:cdn:Endpoint"
+            },
+            "status": "free resource"
+        },
+        {
+            "name": "notfound_html",
+            "product": "azure-native:storage:Blob",
+            "props": {
+                "accountName": "storageaccount",
+                "containerName": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                "contentType": "text/html",
+                "resourceGroupName": "resourceGroup",
+                "type": "Block"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "index_html",
+            "product": "azure-native:storage:Blob",
+            "props": {
+                "accountName": "storageaccount",
+                "containerName": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+                "contentType": "text/html",
+                "resourceGroupName": "resourceGroup",
+                "type": "Block"
+            },
+            "status": "Sorry, not supported yet"
+        },
+        {
+            "name": "storageaccount",
+            "on_demand_rate": "0.004",
+            "prices": [
+                {
+                    "is_current": true,
+                    "model": "OnDemand",
+                    "rate_per_hr": "0.004",
+                    "unit": "Hrs"
+                }
+            ],
+            "product": "azure Object Storage",
+            "props": {
+                "accessTier": "Hot",
+                "kind": "StorageV2",
+                "redundancy": "LRS"
+            },
+            "region_fallback": true
+        }
+    ],
+    "totals": {
+        "hourly_rate": "0.004",
+        "monthly_hourly": "2.92",
+        "monthly_total": "2.92",
+        "monthly_usage": "0"
+    }
+}

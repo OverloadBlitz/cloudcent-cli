@@ -2,6 +2,7 @@
 /dist/
 /cloudcent
 /cloudcent-go
+/cloudcent-test-bin
 
 # IDE
 .idea/
